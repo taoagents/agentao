@@ -24,13 +24,15 @@ class TrueSkillGrader(GraderInterface):
             if submission.miner_hotkey not in self.ratings:
                 self.ratings[submission.miner_hotkey] = self.env.create_rating()
 
-        float_scores = self.float_grader.grade(submissions)
-
         # We run the rating system thrice for steadier results when we first
         # initialize the ratings
-        num_runs = 1 if self.num_runs > 5 else 3
-        for _ in range(num_runs):
-            self.update_ratings(submissions, float_scores)
+        if len(submissions) > 1:
+            num_runs = 1 if self.num_runs > 5 else 3
+            float_scores = self.float_grader.grade(submissions)
+            for _ in range(num_runs):
+                self.update_ratings(submissions, float_scores)
+
+            self.num_runs += 1
 
         ratings = []
         mean_score = np.mean([r.mu - 3*r.sigma for r in self.ratings.values()])
