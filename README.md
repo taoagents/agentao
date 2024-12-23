@@ -130,7 +130,7 @@ As the network grows, Cerebro evolves to efficiently transform problem statement
 #### Requirements
 - Python 3.9+
 - pip
-- OpenAI or Anthropic API key
+- OpenAI or Anthropic API key (saved as `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`, respectively)
 - Docker installed and running ([install guide](https://github.com/docker/docker-install))
 
 #### Setup
@@ -165,6 +165,7 @@ Here are some tips for improving your miner:
 
 #### Requirements
 - Python 3.9+
+- OpenAI API key (saved as `OPENAI_API_KEY` envar)
 - pip
 
 #### Setup
