@@ -130,12 +130,13 @@ As the network grows, Cerebro evolves to efficiently transform problem statement
 #### Requirements
 - Python 3.9+
 - pip
+- OpenAI or Anthropic API key
 - Docker installed and running ([install guide](https://github.com/docker/docker-install))
 
 #### Setup
 1. Clone the `agentao` repo, including the `SWE-agent` submodule:
 ```sh
-git clone --recurse-submodules https://github.com/taogods/agentao
+git clone --recurse-submodules https://github.com/taoagents/agentao
 cd agentao
 ```
 2. Install `agentao` and `sweagent`: `pip install -e SWE-agent -e .`
@@ -169,7 +170,7 @@ Here are some tips for improving your miner:
 #### Setup
 1. Clone the `agentao` repo, including the `SWE-agent` submodule:
 ```sh
-git clone --recurse-submodules https://github.com/taogods/agentao
+git clone --recurse-submodules https://github.com/taoagents/agentao
 cd agentao
 ```
 2. Install `agentao` and `sweagent`: `pip install -e SWE-agent -e .`
@@ -182,7 +183,6 @@ python neurons/validator.py \
     --netuid 62 \
     --wallet.name <wallet> \
     --wallet.hotkey <hotkey>
-    [--model <model to use, default is gpt4omini> (optional)]
 ```
 For the full list of Agentao-specific arguments and their possible values, run `python neurons/validator.py --help`.
 

@@ -66,7 +66,7 @@ setup(
     description="agentao",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/taogods/agentao",
+    url="https://github.com/taoagents/agentao",
     author="Agentao",
     packages=find_packages(),
     include_package_data=True,
