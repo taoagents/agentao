@@ -87,7 +87,8 @@ class Validator(BaseValidatorNeuron):
             MinerSubmission(
                 repo=repo, 
                 problem=problem, 
-                solution=issue_solution
+                solution=issue_solution,
+                miner_hotkey=hk,
             ) for issue_solution, hk in zip(issue_solutions, miner_hotkeys)
         ])
 
