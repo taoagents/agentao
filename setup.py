@@ -78,6 +78,7 @@ setup(
         "websocket-client @ git+https://github.com/websocket-client/websocket-client.git",
         # todo: update bittensor version
         "bittensor==7.3.1",
+        "trueskill",
         "starlette>=0.30.0",
         "pydantic>=2",
         "rich>=13",
