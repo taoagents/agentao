@@ -47,6 +47,7 @@ class ValidatorDefaults:
         min_file_content_len=50,
     )
 
+MAX_MINERS_PER_PROBLEM: Final[int] = 10
 
 class Validator(BaseValidatorNeuron):
     """
@@ -83,14 +84,14 @@ class Validator(BaseValidatorNeuron):
         """
         Validate the responses from the miners. This function should score the responses and return a list of rewards for each miner.
         """
-        llm_evals = self.grader.grade([
+        llm_evals = np.array(self.grader.grade([
             MinerSubmission(
                 repo=repo, 
                 problem=problem, 
                 solution=issue_solution,
                 miner_hotkey=hk,
             ) for issue_solution, hk in zip(issue_solutions, miner_hotkeys)
-        ])
+        ]))
 
         response_times = np.array([
             exponential_decay(self.miner_request_timeout_mins * 60, t)
@@ -154,7 +155,13 @@ class Validator(BaseValidatorNeuron):
             uid for uid in range(len(self.metagraph.S))
             if check_uid_availability(self.metagraph, uid, self.config.neuron.vpermit_tao_limit)
         ]
-        LOGGER.info(f"Miner UIDs: {miner_uids}")
+        LOGGER.info(f"Found {len(miner_uids)} miner UIDs: {miner_uids}")
+
+        if len(miner_uids) > MAX_MINERS_PER_PROBLEM:
+            miner_uids = random.sample(miner_uids, MAX_MINERS_PER_PROBLEM)
+            LOGGER.info(
+                f"Subsampling {MAX_MINERS_PER_PROBLEM} uids from list of {len(miner_uids)}. Subsampled miner UIDs: {miner_uids}"
+            )
 
         if len(miner_uids) == 0:
             LOGGER.info("No miners available to query. Exiting forward pass...")
