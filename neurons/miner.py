@@ -34,7 +34,7 @@ from agentao.repo_environment import SUPPORTED_REPOS, REPO_TO_ENVIRONMENT_INFO
 
 class MinerDefaults:
     MAX_INSTANCE_COST = 3.
-    MODEL = "gpt4omini"
+    MODEL = "gpt-4o-mini"
 
 
 class Miner(BaseMinerNeuron):
