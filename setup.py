@@ -76,8 +76,7 @@ setup(
     install_requires=[
         # Install nightly version to patch issue with validators crashing in 1.8.0 release
         "websocket-client @ git+https://github.com/websocket-client/websocket-client.git",
-        # todo: update bittensor version
-        "bittensor==7.3.1",
+        "bittensor==8.5.1",
         "trueskill",
         "starlette>=0.30.0",
         "pydantic>=2",
