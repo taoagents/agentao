@@ -13,6 +13,8 @@ from agentao.helpers.classes import FilePair, GeneratedProblemStatement, \
 from agentao.helpers.helpers import calculate_price
 from agentao.validator.ingest import get_all_filepairs
 
+from logging import Logger
+
 PROBLEM_STATEMENT_TEMPLATE: Final[Template] = Template(
     dedent("""
     You are a skilled software engineering assistant. You will be provided with multiple files as context. Each file will contain portions of code, documentation, or relevant information about a software system. Your task is to come up with a specific software engineering problem that requires a solution to involve at least two of these files. You will generate a list of these problems, in the generated_problems array response.
@@ -97,12 +99,14 @@ def create_problem_statements(
 def generate_problems_for_single_repo(
     repo_path: Path,
     ingestion_heuristics: IngestionHeuristics,
-    problem_generation_params: ProblemGeneratorParameters
+    problem_generation_params: ProblemGeneratorParameters,
+    logger: Logger
 ) -> List[GeneratedProblemStatement]:
     file_pairs = get_all_filepairs(
         repo_path,
+        logger=logger,
         heuristics=ingestion_heuristics,
-        refresh=False
+        refresh=False,
     )
 
     # Generate one problem statement, with prompt and model to benchmark
