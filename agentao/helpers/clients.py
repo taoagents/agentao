@@ -11,11 +11,23 @@ from typing import Any, Dict, Optional
 
 load_dotenv()
 
-lifecycle_events = {
-    "question_generated": ["question_id", "question_text"],
-    "miner_submitted": ["question_id", "miner_hotkey"],
-    "solution_selected": ["question_id", "grade", "miner_hotkey"]
-}
+class LifecycleEvents(Enum):
+    QUESTION_GENERATED = "question_generated"
+    MINER_SUBMITTED = "miner_submitted"
+    SOLUTION_SELECTED = "solution_selected"
+
+    @classmethod
+    def get_required_props(cls, event):
+        props_map = {
+            cls.QUESTION_GENERATED: ["question_id", "question_text", "created_at"],
+            cls.MINER_SUBMITTED: ["question_id", "miner_hotkey", "submitted_at"],
+            cls.SOLUTION_SELECTED: ["question_id", "grade", "miner_hotkey", "selected_at"]
+        }
+        return props_map.get(event, [])
+
+class LogType(Enum):
+    INTERNAL = "internal"
+    LIFECYCLE = "lifecycle"
 
 @dataclass
 class LogSessionContext:
@@ -28,32 +40,37 @@ class LogSessionContext:
     def to_dict(self):
         return asdict(self)
 
-def validate_lifecycle_event(event_type: str, properties: Dict[str, Any]) -> bool:
-    required_properties = lifecycle_events.get(event_type)
+def validate_lifecycle_event(event_type: LifecycleEvents, properties: Dict[str, Any]) -> bool:
+    if not event_type or not isinstance(event_type, LifecycleEvents):
+        return False
     
-    if required_properties is None or not all(prop in properties for prop in required_properties):
+    required_props = LifecycleEvents.get_required_props(event_type)
+    if not properties or not all(prop in properties for prop in required_props):
         return False
     
     return True
 
 @dataclass
 class LogContext:
-    log_type: str # internal or lifecycle
-    event_type: str # can be anything. this is the event id recorded. if this is a lifecycle log it must be one of question_generated, miner_submitted, or solution_selected
-    flush_posthog: bool = False
+    log_type: LogType
+    event_type: Optional[LifecycleEvents]
     additional_properties: Optional[Dict[Any, Any]] = None
-
-    def __post_init__(self):
-        if self.log_type not in ["lifecycle", "internal"]:
-            raise ValueError(f"Invalid log type: {self.log_type}. Must be one of internal or lifecycle")
-        
-        if self.log_type == "lifecycle" and (self.event_type not in lifecycle_events.keys() or not validate_lifecycle_event(self.event_type, self.additional_properties)):
-            raise ValueError(f"Properties do not match the expected format for the event type {self.event_type}")
-
-        return True
     
+    def __post_init__(self):
+        if self.log_type == LogType.LIFECYCLE and not self.event_type:
+            raise ValueError("Event type must be provided for lifecycle events")
+
+        if self.log_type == LogType.LIFECYCLE and not validate_lifecycle_event(self.event_type, self.additional_properties):
+            raise ValueError("Properties do not match the expected format for the event type")
+        
+        return True
+
     def to_dict(self):
-        return asdict(self)
+        base_dict = asdict(self)
+        base_dict['log_type'] = self.log_type.value
+        if self.additional_properties:
+            base_dict.update(self.additional_properties)
+        return base_dict
 
 class ESTFormatter(logging.Formatter):
     def formatTime(self, record, datefmt=None):
@@ -66,7 +83,92 @@ class ESTFormatter(logging.Formatter):
         record.levelname = f"{record.levelname:<5}"
         return super().format(record)
 
+
 formatter = ESTFormatter('%(asctime)s - %(filename)s:%(lineno)d [%(levelname)s] %(message)s')
+
+class AgentaoLogger:
+    def __init__(self, base_logger: logging.Logger):
+        self.logger = base_logger
+        self._context: Optional[LogSessionContext] = None
+
+    def set_context(self, context: LogSessionContext):
+        """Set the context for subsequent log messages"""
+        self._context = context
+
+    def _log(self, level: int, message: str, event_id: Optional[str] = None, 
+             additional_properties: Optional[Dict] = None):
+        if not self._context:
+            raise ValueError("Logger context not set. Call set_context() first.")
+
+        properties = self._context.to_dict()
+        if additional_properties:
+            properties.update(additional_properties)
+
+        if self.logger.posthog_enabled:
+            record = logging.LogRecord(
+                name=self.logger.name,
+                level=level,
+                pathname="",
+                lineno=0,
+                msg=message,
+                args=(),
+                exc_info=None
+            )
+            record.event_id = event_id or message
+            record.properties = properties
+            record.distinct_id = self._context.actor_id
+            
+            # Find and use PostHog handler
+            for handler in self.logger.handlers:
+                if isinstance(handler, PostHogHandler):
+                    handler.emit(record)
+
+        # Always log to console with context
+        context_str = f"[{self._context.actor_type}:{self._context.actor_id}] "
+        self.logger.log(level, context_str + message)
+
+    def lifecycle_event(self, message: str, context: LogContext):
+        """Log lifecycle events (only for validators)"""
+        if self._context.actor_type != "validator":
+            raise ValueError("Lifecycle events can only be emitted by validators")
+        
+        if context.log_type != LogType.LIFECYCLE:
+            raise ValueError("Logger context must be set to LIFECYCLE for lifecycle events")
+        
+        # Validate the properties for a lifecycle event
+        if not validate_lifecycle_event(context.event_type, context.additional_properties):
+            raise ValueError("Properties do not match the expected format for the event type")
+
+        self._log(
+            level=logging.INFO,
+            message=message,
+            event_id=context.event_type.value,
+            additional_properties=context.additional_properties
+        )
+
+    def debug(self, message: str, properties: Optional[Dict] = None):
+        """Internal debug log"""
+        if self._context.log_type != LogType.INTERNAL:
+            raise ValueError("Logger context must be set to INTERNAL for debug logs")
+        self._log(logging.DEBUG, message, additional_properties=properties)
+
+    def info(self, message: str, properties: Optional[Dict] = None):
+        """Internal info log"""
+        if self._context.log_type != LogType.INTERNAL:
+            raise ValueError("Logger context must be set to INTERNAL for info logs")
+        self._log(logging.INFO, message, additional_properties=properties)
+
+    def warning(self, message: str, properties: Optional[Dict] = None):
+        """Internal warning log"""
+        if self._context.log_type != LogType.INTERNAL:
+            raise ValueError("Logger context must be set to INTERNAL for warning logs")
+        self._log(logging.WARNING, message, additional_properties=properties)
+
+    def error(self, message: str, properties: Optional[Dict] = None):
+        """Internal error log"""
+        if self._context.log_type != LogType.INTERNAL:
+            raise ValueError("Logger context must be set to INTERNAL for error logs")
+        self._log(logging.ERROR, message, additional_properties=properties)
 
 # Get all built-in LogRecord attributes by creating a dummy record and getting its __dict__ keys
 LOG_RECORD_BUILTIN_ATTRS = list(logging.LogRecord("", 0, "", 0, "", (), None).__dict__.keys())
@@ -93,87 +195,105 @@ class AgentaoHandler(logging.Handler):
             return 
         
         try:
+            description = self.format(record)
             properties = {}
 
             for key, val in record.__dict__.items():
                 if key not in LOG_RECORD_BUILTIN_ATTRS:
                     properties[key] = val
 
-            formatted_properties = {
-                "description": record.message,
-                **self._context.to_dict(),
-                **properties
-            }
+            if self._posthog_enabled:
+                event_type = properties.get("log_type")
 
-            # If its a simple message log, just send it directly with only actor context
-            if len(properties.keys()) == 0:
-                if self._posthog_enabled:
+                if event_type == LogType.LIFECYCLE.value:
+                    if not properties.get("event_type") or properties.get("event_type") not in [LifecycleEvents.MINER_SUBMITTED.value, LifecycleEvents.QUESTION_GENERATED.value, LifecycleEvents.SOLUTION_SELECTED.value]:
+                        raise ValueError(f"Invalid event type: {properties.get('event_type') or ''}")
+                    # Validate the properties for a lifecycle event 
+                    if not validate_lifecycle_event(properties.get("event_type"), properties):
+                        raise ValueError("Properties do not match the expected format for the event type")
+                    
+                    if not self._context.actor_type == "validator":
+                        raise PermissionError("Only validators can post lifecycle events.")
+                    
                     posthog.capture(
                         distinct_id=self._context.actor_id,
-                        event=record.message,
-                        properties=formatted_properties
+                        event=record.event_id,
+                        properties=properties
                     )
-            
-            log_type = properties.get("log_type")
-            event_type = properties.get("event_type")
-            flush_posthog_value = properties.get("flush_posthog") or False
-
-            if log_type == "lifecycle":
-                if not event_type or event_type not in lifecycle_events.keys():
-                    raise ValueError(f"Invalid event type: {properties.get('event_type') or ''}")
-                
-                if not self._context.actor_type == "validator":
-                    raise PermissionError("Only validators can post lifecycle events.")
-                
-                if self._posthog_enabled:
+                elif event_type == LogType.INTERNAL.value:
+                    formatted_properties = {
+                        "description": description,
+                        **properties
+                    }
+                    
                     posthog.capture(
                         distinct_id=self._context.actor_id,
-                        event=event_type,
+                        event=record.event_id,
                         properties=formatted_properties
                     )
-                
-                # Always push lifecycle events to DB
-                # Todo: setup api endpoint to push to DB
-                # try:
-                #     async with ClientSession() as session:
-                #         # TODO: Add how long it takes to upload the issue
-                #         payload = [{
-                #             "problem_statement": problem_statement,
-                #             "solution_patch": response_patch,
-                #             "score": response_score,
-                #             "miner_hotkey": miner_hotkey,
-                #         } for
-                #             response_patch,
-                #             response_score,
-                #             miner_hotkey
-                #             in zip(response_patches, rewards_list, hotkeys)
-                #         ]
-                #         async with session.post(
-                #             url=UPLOAD_ISSUE_ENDPOINT,
-                #             auth=BasicAuth(hotkey, signature),
-                #             json=payload,
-                #         ) as response:
-                #             response.raise_for_status()
-                #             _result = await response.json()
-                # except Exception:
-                #     self.logger.exception("Error uploading closed issue")
 
-            elif log_type == "internal":
-                if self._posthog_enabled:
-                    posthog.capture(
-                        distinct_id=self._context.actor_id,
-                        event=event_type or record.message,
-                        properties=formatted_properties
-                    )
-            else:
-                raise ValueError(f"Invalid log type: {log_type}")
+                else:
+                    raise ValueError(f"Invalid log type: {event_type}")
 
-            if flush_posthog_value == True:
                 posthog.flush()
         except Exception:
             self.handleError(record)
 
-def setup_logger(logger_name: str, log_session_context: LogSessionContext) -> Logger:
+class PostHogHandler(logging.Handler):
+    def __init__(self):
+        super().__init__()
+        self.setFormatter(formatter)
+
+    def emit(self, record):
+        try:
+            event_id = getattr(record, 'event_id', None) or record.getMessage()
+            description = self.format(record)  # Use formatter to format the message
+            properties = getattr(record, 'properties', {})
+            distinct_id = getattr(record, 'distinct_id', 'anonymous')
+            event_properties = {
+                'description': description,
+                **properties
+            }
+            print('logging to posthog', event_id, event_properties)
+            posthog.capture(
+                distinct_id=distinct_id,
+                event=event_id,
+                properties=event_properties
+            )
+            posthog.flush()  # Force PostHog to push events immediately
+        except Exception:
+            self.handleError(record)
+
+
+def setup_logger() -> Logger:
+    # Clear any existing handlers to avoid conflicts
+    logger = logging.getLogger(__name__)
+    if logger.hasHandlers():
+        logger.handlers.clear()
+
+    logger.setLevel(logging.DEBUG)
+
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+
+    # Add PostHog handler if environment variables are set
+    posthog_enabled = False
+    if os.environ.get("POSTHOG_KEY") and os.environ.get("POSTHOG_HOST"):
+        try:
+            posthog.api_key = os.environ["POSTHOG_KEY"]
+            posthog.host = os.environ["POSTHOG_HOST"]
+            logger.addHandler(PostHogHandler())
+            posthog_enabled = True
+        except Exception as e:
+            logger.warning(f"Failed to initialize PostHog handler: {e}")
+
+    # Attach the posthog_enabled flag to the logger
+    logger.posthog_enabled = posthog_enabled
+    return logger
+
+
+def setup_x_logger(logger_name: str, log_session_context: LogSessionContext) -> Logger:
     logger = logging.getLogger(logger_name)
 
     if logger.hasHandlers():
@@ -189,6 +309,9 @@ def setup_logger(logger_name: str, log_session_context: LogSessionContext) -> Lo
 
     return logger
 
+# Initialize the shared logger
+LOGGER = setup_logger()
+
 # cls.QUESTION_GENERATED: ["question_id", "question_text", "created_at"],
 # cls.MINER_SUBMITTED: ["question_id", "miner_hotkey", "submitted_at"],
 # cls.SOLUTION_SELECTED: ["question_id", "grade", "miner_hotkey", "selected_at"]
@@ -199,36 +322,33 @@ if __name__ == "__main__":
         actor_type="validator",
         session_id="1000",
         is_mainnet=False,
-        log_version=5,
+        log_version=4,
     )
 
-    example_internal_log = LogContext(
-        log_type="internal",
-        event_type="this is some other event type",
-        flush_posthog=True,
+    example_log = LogContext(
+        log_type=LogType.INTERNAL,
+        event_type=None,
         additional_properties={
-            "patch", "this is an example patch",
+            "some key", "additional value"
         }
     )
 
-    example_lifecycle_log = LogContext(
-        log_type="lifecycle",
-        event_type="question_generated",
-        additional_properties={"question_text": "new question generated!", "question_id": "224"}
+    my_logger: Logger = setup_x_logger(logger_name="validator_n", log_session_context=log_session_context)
+
+    example_lifecycle_context = LogContext(
+        log_type=LogType.LIFECYCLE,
+        event_type=LifecycleEvents.QUESTION_GENERATED,
+        additional_properties={"question_text": "What is the capital of Mexico?", "question_id": "123", "created_at": datetime.now()}
     )
 
-    my_logger: Logger = setup_logger(logger_name="validator_n", log_session_context=log_session_context)
-    my_logger.info("internal test 1", extra=asdict(example_internal_log))
-    my_logger.info("lifecycle test 1", extra=asdict(example_lifecycle_log))
+    my_logger.info("this is a test of the new log version", extra={
+        "log_type": "internal",
+        "some key": "some value",
+        "event_id": "some vent id"
+    })
 
-    # my_logger.info("this is anotehr test of the new log version", extra={
-    #     "log_type": "internal",
-    #     "some key": "some value",
-    # })
-
-
-    from pprint import pprint
-    pprint(asdict(example_internal_log), indent=2)
-    print('+++++++')
-    pprint(asdict(example_lifecycle_log), indent=2)
     # query_all_logs()
+
+# Integrate logging into the rest of the codebase
+# Setup ingestion and grouping on frontend that makes senese
+# Create trpc screens

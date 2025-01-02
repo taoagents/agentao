@@ -19,20 +19,18 @@ import tempfile
 import time
 from pathlib import Path
 from typing import Tuple
-import random
 
 import yaml
 
 import agentao
 from agentao.base.miner import BaseMinerNeuron
 from agentao.helpers.classes import UnsolvedIssue
+from agentao.helpers.clients import LOGGER
 from agentao.helpers.constants import MODEL_NAME_TO_ENVAR_NAME, SUPPORTED_MINER_MODELS
 from agentao.helpers.helpers import clone_repo
 from agentao.miner.generate_solution import generate_code_patch
 from agentao.repo_environment import SUPPORTED_REPOS, REPO_TO_ENVIRONMENT_INFO
-from agentao.helpers.clients import LogSessionContext, setup_logger
 
-from logging import Logger
 
 class MinerDefaults:
     MAX_INSTANCE_COST = 3.
@@ -55,6 +53,7 @@ class Miner(BaseMinerNeuron):
         max_instance_cost: float = MinerDefaults.MAX_INSTANCE_COST,
         use_mock_responses: bool = False,
     ):
+
         init_swe_agent(model)
 
         self.model_name = model
@@ -62,19 +61,6 @@ class Miner(BaseMinerNeuron):
         self.use_mock_responses = use_mock_responses
 
         super(Miner, self).__init__(config=config)
-
-        hotkey = self.wallet.hotkey.ss58_address
-
-        # Setup logging
-        log_session_context = LogSessionContext(
-            actor_id=hotkey,
-            actor_type="miner",
-            is_mainnet=self.subtensor.network == "finney",
-            log_version=6,
-            session_id=''.join(random.choices(''.join(map(chr, range(33,127))), k=8))
-        )
-
-        self.logger: Logger = setup_logger(hotkey, log_session_context)
 
     async def forward(
         self, synapse: agentao.protocol.CodingTask
@@ -93,8 +79,8 @@ class Miner(BaseMinerNeuron):
         the miner's intended operation. This method demonstrates a basic transformation of input data.
         """
         # if patch.txt exists return that
-        self.logger.info("Starting miner forward pass...")
-        self.logger.info(f"Received a request with repo: {synapse.repo}, problem statement: {synapse.problem_statement[:50]}...")
+        LOGGER.info("Starting miner forward pass...")
+        LOGGER.info(f"Received a request with repo: {synapse.repo}, problem statement: {synapse.problem_statement[:50]}...")
 
         current_dir = Path.cwd()
 
@@ -104,11 +90,11 @@ class Miner(BaseMinerNeuron):
 
             jobs_dir = Path("jobs")
             jobs_dir.mkdir(parents=True, exist_ok=True)
-            self.logger.info(f"Using {jobs_dir.absolute()} as the directory for code repositories")
+            LOGGER.info(f"Using {jobs_dir.absolute()} as the directory for code repositories")
 
-            self.logger.info(f"Cloning repo {repo}...")
+            LOGGER.info(f"Cloning repo {repo}...")
             local_repo_dir = clone_repo(author_name, repo_name, current_dir.parent)
-            self.logger.info(f"Finished cloning repo {repo}")
+            LOGGER.info(f"Finished cloning repo {repo}")
 
             if repo not in SUPPORTED_REPOS:
                 raise ValueError(
@@ -132,16 +118,15 @@ class Miner(BaseMinerNeuron):
                             env_setup_path=Path(temp_env_file.name)
                         ),
                         self.max_instance_cost,
-                        self.logger
                     ).patch
 
-            self.logger.info(f"Finished generating code patch for repo {synapse.repo}")
+            LOGGER.info(f"Finished generating code patch for repo {synapse.repo}")
 
-            self.logger.info(f"Exiting miner forward pass for repo {synapse.repo}")
-            self.logger.debug(f"Returning patch: {synapse.patch}")
+            LOGGER.info(f"Exiting miner forward pass for repo {synapse.repo}")
+            LOGGER.debug(f"Returning patch: {synapse.patch}")
             return synapse
         except Exception:
-            self.logger.exception("Error processing request")
+            LOGGER.exception("Error processing request")
 
     async def blacklist(
         self, synapse: agentao.protocol.CodingTask
@@ -177,7 +162,7 @@ class Miner(BaseMinerNeuron):
         """
 
         if synapse.dendrite is None or synapse.dendrite.hotkey is None:
-            self.logger.warning("Received a request without a dendrite or hotkey.")
+            LOGGER.warning("Received a request without a dendrite or hotkey.")
             return True, "Missing dendrite or hotkey"
 
         uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)
@@ -186,7 +171,7 @@ class Miner(BaseMinerNeuron):
             and synapse.dendrite.hotkey not in self.metagraph.hotkeys
         ):
             # Ignore requests from un-registered entities.
-            self.logger.info(
+            LOGGER.info(
                 f"Blacklisting un-registered hotkey {synapse.dendrite.hotkey}"
             )
             return True, "Unrecognized hotkey"
@@ -194,12 +179,12 @@ class Miner(BaseMinerNeuron):
         if self.config.blacklist.force_validator_permit:
             # If the config is set to force validator permit, then we should only allow requests from validators.
             if not self.metagraph.validator_permit[uid]:
-                self.logger.warning(
+                LOGGER.warning(
                     f"Blacklisting a request from non-validator hotkey {synapse.dendrite.hotkey}"
                 )
                 return True, "Non-validator hotkey"
 
-        self.logger.info(
+        LOGGER.info(
             f"Not Blacklisting recognized hotkey {synapse.dendrite.hotkey}"
         )
         return False, "Hotkey recognized!"
@@ -225,7 +210,7 @@ class Miner(BaseMinerNeuron):
         - A higher stake results in a higher priority value.
         """
         if synapse.dendrite is None or synapse.dendrite.hotkey is None:
-            self.logger.warning("Received a request without a dendrite or hotkey.")
+            LOGGER.warning("Received a request without a dendrite or hotkey.")
             return 0.0
         
         caller_uid = self.metagraph.hotkeys.index(
@@ -234,7 +219,7 @@ class Miner(BaseMinerNeuron):
         priority = float(
             self.metagraph.S[caller_uid]
         )  # Return the stake as the priority.
-        self.logger.info(
+        LOGGER.info(
             f"Prioritizing {synapse.dendrite.hotkey} with value: {priority}"
         )
         return priority
@@ -261,6 +246,7 @@ def parse_args() -> argparse.Namespace:
     )
     args, _ = parser.parse_known_args()
     return args
+
 
 # This is the main function, which runs the miner.
 if __name__ == "__main__":

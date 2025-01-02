@@ -10,18 +10,14 @@ import openai
 from pydantic import BaseModel
 
 from agentao.helpers.classes import GeneratedProblemStatement
+from agentao.helpers.clients import LOGGER
 from agentao.validator.graders.abstract_grader import GraderInterface, MinerSubmission
-
-from logging import Logger
 
 NUM_ELO_ROUNDS: Final[int] = 2
 
 class EloGrader(GraderInterface):
-    def __init__(self, logger: Logger):
-        self.logger = logger
-
     def grade(self, submissions: List[MinerSubmission]) -> List[float]:
-        scores = rank_elo(submissions, self.logger)
+        scores = rank_elo(submissions)
         return scores
 
 
@@ -189,7 +185,7 @@ def get_raw_elo_rankings(elox: EloRating, indices: List[str]) -> Dict[str, float
     return dict(sorted(rankings.items(), key=lambda x: x[1], reverse=True))
 
 
-def rank_elo(submissions: List[MinerSubmission], logger: Logger) -> List[float]:
+def rank_elo(submissions: List[MinerSubmission]) -> List[float]:
     openai_client: Final[openai.Client] = openai.Client(api_key=os.getenv("OPENAI_API_KEY"))
 
     local_elo = EloRating()
@@ -207,10 +203,10 @@ def rank_elo(submissions: List[MinerSubmission], logger: Logger) -> List[float]:
             solution_1_and_index_str=(solution_1, second),
             openai_client=openai_client,
         )
-        logger.info(f"Current rankings: {get_raw_elo_rankings(local_elo, str_indices)}")
+        LOGGER.info(f"Current rankings: {get_raw_elo_rankings(local_elo, str_indices)}")
 
     raw_elo_model_rankings = get_raw_elo_rankings(local_elo, str_indices)
-    logger.info(f"Raw elo model rankings: {raw_elo_model_rankings}")
+    LOGGER.info(f"Raw elo model rankings: {raw_elo_model_rankings}")
 
     scores = [raw_elo_model_rankings[str(i)] for i in range(len(submissions))]
     return scores

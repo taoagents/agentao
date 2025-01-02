@@ -7,10 +7,9 @@ import openai
 from pydantic import BaseModel
 
 from agentao.helpers.classes import GeneratedProblemStatement, IssueSolution, ValidatorModelStats
+from agentao.helpers.clients import LOGGER
 from agentao.validator.graders.abstract_grader import MinerSubmission, GraderInterface
 from agentao.validator.graders.helpers import preprocess_patch
-
-from logging import Logger
 
 GRADER_SYSTEM_PROMPT: Final[str] = """
 Instructions:
@@ -58,14 +57,11 @@ EMPTY_PATCH_SCORE: Final[FloatGraderScore] = FloatGraderScore(
 )
 
 class FloatGrader(GraderInterface):
-    def __init__(self, logger: Logger):
-        self.logger = logger
-
     def grade(self, submissions: List[MinerSubmission]) -> List[float]:
         overall_scores = []
 
         for submission in submissions:
-            miner_output_score = _grade_miner_solution(submission, self.logger)
+            miner_output_score = _grade_miner_solution(submission)
             overall_scores.append(_compute_overall_score(miner_output_score))
 
         return overall_scores
@@ -94,7 +90,7 @@ def _compute_overall_score(miner_output_score: FloatGraderScore) -> float:
     )
 
 
-def _grade_miner_solution(miner_submission: MinerSubmission, logger: Logger) -> FloatGraderScore:
+def _grade_miner_solution(miner_submission: MinerSubmission) -> FloatGraderScore:
     repo = miner_submission.repo
     generated_problem_statement = miner_submission.problem
     miner_solution = miner_submission.solution
@@ -103,9 +99,10 @@ def _grade_miner_solution(miner_submission: MinerSubmission, logger: Logger) -> 
     cleaned_patch = preprocess_patch(repo, miner_solution.patch)
 
     if cleaned_patch == "":
-        logger.info(f"Patch is empty, terminating early...")
+        LOGGER.info(f"Patch is empty, terminating early...")
         return EMPTY_PATCH_SCORE
 
+    # logger.info(f"Cleaned context:\n{cleaned_patch_context}\n\n")
     solution_context = SOLUTION_CONTEXT_TMPL.format(
         problem_statement=generated_problem_statement.problem_statement,
         cleaned_patch_context=cleaned_patch,
@@ -113,7 +110,7 @@ def _grade_miner_solution(miner_submission: MinerSubmission, logger: Logger) -> 
         affected_files=generated_problem_statement.prompt,  # todo: fix this
     )
 
-    logger.info("Making call to grade code...")
+    LOGGER.info("Making call to grade code...")
     completion = OPENAI_CLIENT.beta.chat.completions.parse(
         model='gpt-4o-2024-08-06',
         messages=[
@@ -123,7 +120,7 @@ def _grade_miner_solution(miner_submission: MinerSubmission, logger: Logger) -> 
         response_format=FloatGraderScore,
     )
     miner_output_score: FloatGraderScore = completion.choices[0].message.parsed
-    logger.info("Finished making call to grade code")
+    LOGGER.info("Finished making call to grade code")
 
     if miner_output_score is None:
         raise Exception("OpenAI did not grade miner output")
@@ -153,8 +150,7 @@ if __name__ == "__main__":
             """)
     )
 
-    logger = Logger("float_grader")
-    grader = FloatGrader(logger)
+    grader = FloatGrader()
     scores = grader.grade([MinerSubmission(
             repo="mwaskmom/seaborn",
             problem=GeneratedProblemStatement(
@@ -168,4 +164,4 @@ if __name__ == "__main__":
             solution=sample_diff
     )])
 
-    print(f"Grade response {scores}")
+    LOGGER.info(f"Grade response {scores}")

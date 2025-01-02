@@ -35,9 +35,6 @@ print(f"Finished cloning repo {repo}")
 
 repo_environment_info = REPO_TO_ENVIRONMENT_INFO[repo]
 
-from logging import Logger
-logger = Logger("test_miner")
-
 with tempfile.NamedTemporaryFile(suffix=".yaml", mode="w") as temp_env_file:
     yaml.dump(repo_environment_info.config_dict, temp_env_file)
     temp_env_file.flush()
@@ -51,8 +48,7 @@ with tempfile.NamedTemporaryFile(suffix=".yaml", mode="w") as temp_env_file:
     patch = generate_code_patch(
         MinerDefaults.MODEL,
         test_unsolved_issue,
-        MinerDefaults.MAX_INSTANCE_COST,
-        logger
+        MinerDefaults.MAX_INSTANCE_COST
     ).patch
 
     # Breakpoint for debugging/analysis

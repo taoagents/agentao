@@ -4,11 +4,11 @@ from pathlib import Path
 import math
 from git import Repo
 
+from agentao.helpers.clients import LOGGER
 from agentao.helpers.constants import PRICING_DATA_PER_MILLION_TOKENS
 
-from logging import Logger
 
-def clone_repo(author_name: str, repo_name: str, base_path: Path, logger: Logger) -> Path:
+def clone_repo(author_name: str, repo_name: str, base_path: Path) -> Path:
     """
     Clone a GitHub repository to a specified directory under 'repos' and return the path.
 
@@ -24,13 +24,13 @@ def clone_repo(author_name: str, repo_name: str, base_path: Path, logger: Logger
         clone_to_path = repos_dir / repo_name
         if clone_to_path.exists() and clone_to_path.is_dir():
             shutil.rmtree(clone_to_path)
-            logger.info(f"Directory {clone_to_path} has been removed.")
+            LOGGER.info(f"Directory {clone_to_path} has been removed.")
 
         Repo.clone_from(f"https://github.com/{author_name}/{repo_name}.git", clone_to_path)
-        logger.info(f"Repository cloned to {clone_to_path}")
+        LOGGER.info(f"Repository cloned to {clone_to_path}")
         return clone_to_path
     except Exception:
-        logger.exception(f"Failed to clone repository")
+        LOGGER.exception(f"Failed to clone repository")
         raise
 
 

@@ -8,7 +8,7 @@ from typing import Final
 import openai
 from git import Repo
 
-from logging import Logger
+from agentao.helpers.clients import LOGGER
 
 CLEANER_SYSTEM_PROMPT: Final[str] = """
 Instruction:
@@ -22,14 +22,14 @@ A patch file, containing a cleaned version of the input
 """
 
 
-def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> str:
+def preprocess_patch(repo_path: str, patch: str) -> str:
     """
     Verify if patch applies, and strip comments from it
 
     repo_path: Relative repo path, eg pytest-dev/pytest
     patch: patch string
     """
-    logger.info(f"Preprocessing patch (length: {len(patch)} for repo {repo_path}...")
+    LOGGER.info(f"Preprocessing patch (length: {len(patch)} for repo {repo_path}...")
 
     OPENAI_CLIENT: Final[openai.Client] = openai.Client(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -61,13 +61,13 @@ def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> str:
 
         processed_patch = remove_comments(patch)
 
-        logger.info(f"Finished preprocessing patch for repo {repo_path}. New length: {len(patch)}")
+        LOGGER.info(f"Finished preprocessing patch for repo {repo_path}. New length: {len(patch)}")
 
     if patch == "":
-        logger.info(f"Patch is empty, terminating early...")
+        LOGGER.info(f"Patch is empty, terminating early...")
         return ""
 
-    logger.info(f"Making call to clean patch context......")
+    LOGGER.info(f"Making call to clean patch context......")
     cleaned_patch_context = OPENAI_CLIENT.chat.completions.create(
         model="gpt-4",
         messages=[
@@ -75,7 +75,7 @@ def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> str:
             {"role": "user", "content": patch}
         ]
     ).choices[0].message.content
-    logger.info(f"Received cleaned patch, length {len(cleaned_patch_context)}")
+    LOGGER.info(f"Received cleaned patch, length {len(cleaned_patch_context)}")
 
     return processed_patch
 
