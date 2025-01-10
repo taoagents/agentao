@@ -201,7 +201,7 @@ class Validator(BaseValidatorNeuron):
 
         num_problems_to_gen = 1
         problems: List[GeneratedProblemStatement] = create_problem_statements(
-            self.model_name, repo, local_repo_dir, num_problems_to_gen, ValidatorDefaults.INGESTION_HEURISTICS
+            self.model_name, repo, local_repo_dir, num_problems_to_gen, ValidatorDefaults.INGESTION_HEURISTICS, self.logger
         )
         problem: GeneratedProblemStatement = problems[0]
 

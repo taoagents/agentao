@@ -73,7 +73,8 @@ def create_problem_statements(
     repo: str,
     local_repo_dir: Path,
     problems: Union[int, List[str]],
-    ingestion_heuristics: IngestionHeuristics
+    ingestion_heuristics: IngestionHeuristics,
+    logger: Logger
 ) -> List[GeneratedProblemStatement]:
     if isinstance(problems, int):
         problem_generator_params = ProblemGeneratorParameters(
@@ -86,7 +87,8 @@ def create_problem_statements(
         problem_statements: List[GeneratedProblemStatement] = generate_problems_for_single_repo(
             repo_path=local_repo_dir,
             ingestion_heuristics=ingestion_heuristics,
-            problem_generation_params=problem_generator_params
+            problem_generation_params=problem_generator_params,
+            logger=logger
         )
     else:
         raise ValueError(
