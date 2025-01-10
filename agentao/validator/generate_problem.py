@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from textwrap import dedent
 from typing import List, Final, Union, Callable
+import random
 
 import openai
 from jinja2 import Template
@@ -61,10 +62,9 @@ def highest_cosine_filepair_selector(file_pairs: List[FilePair]) -> FilePair:
         file_pairs,
         key=lambda x: float(x.cosine_similarity),
         reverse=True
-    )[0]
+    )[random.randint(1, 10)]
 
     return selected_file_pair
-
 
 def create_problem_statements(
     validator_llm: str,
