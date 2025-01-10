@@ -107,7 +107,7 @@ class Miner(BaseMinerNeuron):
             self.logger.info(f"Using {jobs_dir.absolute()} as the directory for code repositories")
 
             self.logger.info(f"Cloning repo {repo}...")
-            local_repo_dir = clone_repo(author_name, repo_name, current_dir.parent)
+            local_repo_dir = clone_repo(author_name, repo_name, current_dir.parent, logger=self.logger)
             self.logger.info(f"Finished cloning repo {repo}")
 
             if repo not in SUPPORTED_REPOS:

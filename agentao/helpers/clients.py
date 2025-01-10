@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from enum import Enum
 from dataclasses import dataclass, asdict
 from typing import Any, Dict, Optional
+import requests
 
 load_dotenv()
 
@@ -27,6 +28,92 @@ class LogSessionContext:
 
     def to_dict(self):
         return asdict(self)
+
+def record_generated_question(
+    question_text: str,
+    question_id: str,
+    submitting_hotkey: str,
+    is_mainnet: bool,
+    base_url: str = "http://localhost:3000"
+) -> requests.Response:
+    endpoint = f"{base_url}/api/trpc/question.recordGeneratedQuestion"
+    
+    payload = {
+        "json": {
+            "question_text": question_text,
+            "question_id": question_id,
+            "submitting_hotkey": submitting_hotkey,
+            "is_mainnet": is_mainnet
+        }
+    }
+    
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "agentao-client/1.0"
+    }
+    
+    response = requests.post(endpoint, json=payload, headers=headers)
+    response.raise_for_status()
+    
+    return response
+
+def record_solution_selected(
+    question_id: str,
+    miner_hotkey: str,
+    submitting_hotkey: str,
+    is_mainnet: bool,
+    grade: int,
+    base_url: str = "http://localhost:3000"
+) -> requests.Response:
+    endpoint = f"{base_url}/api/trpc/question.recordSolutionSelected"
+   
+    payload = {
+        "json": {
+            "question_id": question_id,
+            "miner_hotkey": miner_hotkey,
+            "submitting_hotkey": submitting_hotkey,
+            "is_mainnet": is_mainnet,
+            "grade": grade
+        }
+    }
+    
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "agentao-client/1.0"
+    }
+    
+    response = requests.post(endpoint, json=payload, headers=headers)
+    response.raise_for_status()  # Raises an HTTPError for bad responses (4xx, 5xx)
+    
+    return response
+
+def record_miner_submission(
+    question_id: str,
+    submitting_hotkey: str,
+    miner_hotkey: str,
+    is_mainnet: bool,
+    base_url: str = "http://localhost:3000"
+) -> requests.Response:
+    endpoint = f"{base_url}/api/trpc/question.recordMinerSubmitted"
+
+    payload = {
+        "json": {
+            "question_id": question_id,
+            "miner_hotkey": miner_hotkey,
+            "submitting_hotkey": submitting_hotkey,
+            "is_mainnet": is_mainnet
+        }
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "agentao-client/1.0"
+    }
+
+    response = requests.post(endpoint, json=payload, headers=headers)
+    response.raise_for_status()
+    
+    return response
 
 def validate_lifecycle_event(event_type: str, properties: Dict[str, Any]) -> bool:
     required_properties = lifecycle_events.get(event_type)
@@ -132,31 +219,30 @@ class AgentaoHandler(logging.Handler):
                         properties=formatted_properties
                     )
                 
-                # Always push lifecycle events to DB
-                # Todo: setup api endpoint to push to DB
-                # try:
-                #     async with ClientSession() as session:
-                #         # TODO: Add how long it takes to upload the issue
-                #         payload = [{
-                #             "problem_statement": problem_statement,
-                #             "solution_patch": response_patch,
-                #             "score": response_score,
-                #             "miner_hotkey": miner_hotkey,
-                #         } for
-                #             response_patch,
-                #             response_score,
-                #             miner_hotkey
-                #             in zip(response_patches, rewards_list, hotkeys)
-                #         ]
-                #         async with session.post(
-                #             url=UPLOAD_ISSUE_ENDPOINT,
-                #             auth=BasicAuth(hotkey, signature),
-                #             json=payload,
-                #         ) as response:
-                #             response.raise_for_status()
-                #             _result = await response.json()
-                # except Exception:
-                #     self.logger.exception("Error uploading closed issue")
+                if event_type == "question_generated":
+                    record_generated_question(
+                        question_text=formatted_properties.get("question_text"),
+                        question_id=formatted_properties.get("question_id"),
+                        submitting_hotkey=self._context.actor_id,
+                        is_mainnet=self._context.is_mainnet
+                    )
+                
+                elif event_type == "miner_submitted":
+                    record_miner_submission(
+                        question_id=formatted_properties.get("question_id"),
+                        submitting_hotkey=self._context.actor_id,
+                        miner_hotkey=formatted_properties.get("miner_hotkey"),
+                        is_mainnet=self._context.is_mainnet
+                    )
+                
+                elif event_type == "solution_selected":
+                    record_solution_selected(
+                        question_id=formatted_properties.get("question_id"),
+                        miner_hotkey=formatted_properties.get("miner_hotkey"),
+                        submitting_hotkey=self._context.actor_id,
+                        is_mainnet=self._context.is_mainnet,
+                        grade=formatted_properties.get("grade")
+                    )
 
             elif log_type == "internal":
                 if self._posthog_enabled:
@@ -189,10 +275,6 @@ def setup_logger(logger_name: str, log_session_context: LogSessionContext) -> Lo
 
     return logger
 
-# cls.QUESTION_GENERATED: ["question_id", "question_text", "created_at"],
-# cls.MINER_SUBMITTED: ["question_id", "miner_hotkey", "submitted_at"],
-# cls.SOLUTION_SELECTED: ["question_id", "grade", "miner_hotkey", "selected_at"]
-
 if __name__ == "__main__":
     log_session_context = LogSessionContext(
         actor_id="1289",
@@ -220,11 +302,6 @@ if __name__ == "__main__":
     my_logger: Logger = setup_logger(logger_name="validator_n", log_session_context=log_session_context)
     my_logger.info("internal test 1", extra=asdict(example_internal_log))
     my_logger.info("lifecycle test 1", extra=asdict(example_lifecycle_log))
-
-    # my_logger.info("this is anotehr test of the new log version", extra={
-    #     "log_type": "internal",
-    #     "some key": "some value",
-    # })
 
 
     from pprint import pprint

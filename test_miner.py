@@ -29,14 +29,14 @@ SyntaxError: invalid syntax
 repo = "mwaskom/seaborn"
 author_name, repo_name = repo.split("/")
 
+from logging import Logger
+logger = Logger("test_miner")
+
 print(f"Cloning repo {repo}...")
-local_repo_dir = clone_repo(author_name, repo_name, Path.cwd().parent)
+local_repo_dir = clone_repo(author_name, repo_name, Path.cwd().parent, logger=logger)
 print(f"Finished cloning repo {repo}")
 
 repo_environment_info = REPO_TO_ENVIRONMENT_INFO[repo]
-
-from logging import Logger
-logger = Logger("test_miner")
 
 with tempfile.NamedTemporaryFile(suffix=".yaml", mode="w") as temp_env_file:
     yaml.dump(repo_environment_info.config_dict, temp_env_file)
