@@ -187,7 +187,7 @@ def add_validator_args(cls, parser):
         "--neuron.num_concurrent_forwards",
         type=int,
         help="The number of concurrent forwards running at any time.",
-        default=1,
+        default=3,
     )
 
     parser.add_argument(
