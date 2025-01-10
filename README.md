@@ -193,25 +193,31 @@ cd agentao
 4. Set the required envars in the `.env` file, using [.env.validator_example](.env.validator_example) as a template: `cp .env.validator_example .env` and populate `.env` with the required credentials
 
 #### Run
-Run the validator script with `pm2`.
+Run the validator script via `run_validator.sh`, which will automatically keep it up to date:
 
 **Mainnet**:
 ```sh
-pm2 start neurons/validator.py --name agentao-validator -- \
-    --netuid 62 \
-    --wallet.name <wallet> \
-    --wallet.hotkey <hotkey>
+./scripts/run_validator.sh \
+  --name agentao-validator \
+  -- \
+  --netuid 62 \
+  --wallet.name <wallet> \
+  --wallet.hotkey <hotkey>
 ```
 
 **Testnet**:
 ```sh
-pm2 start neurons/validator.py --name agentao-validator -- \
+./scripts/run_validator.sh \
+    --name agentao-validator \
+    -- \
     --netuid 244 \
     --subtensor.chain_endpoint wss://test.finney.opentensor.ai:443 \
     --wallet.name <wallet> \
     --wallet.hotkey <hotkey>
 ```
-If you are running in a virtual environment, remember to add the `--interpreter <venv>/bin/python3` flag before the `--`.
+Arguments before the `--` will get passed to the `pm2 start` command, and arguments after get passed to the `python neurons/validator.py` command. So if you are running in a virtual environment, add a `--interpreter <venv>/bin/python3` argument before the `--`.
+
+This script will automatically update the code as new updates are pushed. To run the validator with auto-updates off, you can run the script as `AGENTAO_VALIDATOR_AUTO_UPDATE=0 ./scripts/run_validator.sh ...`. Note that this is not recommended, as it will make it more difficult to obtain support in the case of issues.
 
 ### Logs and Support
 Sending logs is fully optional, but recommended. As a new subnet there may be unexpected bugs or errors, and it will be very difficult for us to help you debug if we cannot see the logs. Use the PostHog credentials given in `.env.[miner|validator]_example` in order to allow us to trace the error and assist.
