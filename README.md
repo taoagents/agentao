@@ -140,20 +140,34 @@ git clone --recurse-submodules https://github.com/taoagents/agentao
 cd agentao
 ```
 2. Install `agentao` and `sweagent`: `pip install -e SWE-agent -e .`
-3. Set the required envars in the `.env` file, using [.env.miner_example](.env.miner_example) as a template: `cp .env.miner_example .env` and populate `.env` with the required credentials 
-4. Pull the latest sweagent Docker image: `docker pull sweagent/swe-agent:latest`
+3. Install pm2 if you don't have it: [guide](https://pm2.io/docs/runtime/guide/installation/)
+4. Set the required envars in the `.env` file, using [.env.miner_example](.env.miner_example) as a template: `cp .env.miner_example .env` and populate `.env` with the required credentials 
+5. Pull the latest sweagent Docker image: `docker pull sweagent/swe-agent:latest`
 
 #### Run
-Run the miner script: 
+Run the miner script with `pm2`. 
+
+**Mainnet**: 
 ```sh
-python neurons/miner.py \
+pm2 start neurons/miner.py --name agentao-miner -- \
     --netuid 62 \
     --wallet.name <wallet> \
     --wallet.hotkey <hotkey>
     [--model <model to use, default is gpt4omini> (optional)]
     [--instance-cost <max $ per miner query, default is 3> (optional)]
 ```
-For the full list of Agentao-specific arguments and their possible values, run `python neurons/miner.py --help`.
+
+**Testnet**:
+```sh
+pm2 start neurons/miner.py --name agentao-miner -- \
+    --netuid 244 \
+    --subtensor.chain_endpoint wss://test.finney.opentensor.ai:443 \
+    --wallet.name <wallet> \
+    --wallet.hotkey <hotkey>
+    [--model <model to use, default is gpt4omini> (optional)]
+    [--instance-cost <max $ per miner query, default is 3> (optional)]
+```
+If you are running in a virtual environment, remember to add the `--interpreter <venv>/bin/python3` flag before the `--`.
 
 #### Tips for Better Incentive
 Here are some tips for improving your miner:
@@ -175,17 +189,29 @@ git clone --recurse-submodules https://github.com/taoagents/agentao
 cd agentao
 ```
 2. Install `agentao` and `sweagent`: `pip install -e SWE-agent -e .`
-3. Set the required envars in the `.env` file, using [.env.validator_example](.env.validator_example) as a template: `cp .env.validator_example .env` and populate `.env` with the required credentials
+3. Install pm2 if you don't have it: [guide](https://pm2.io/docs/runtime/guide/installation/)
+4. Set the required envars in the `.env` file, using [.env.validator_example](.env.validator_example) as a template: `cp .env.validator_example .env` and populate `.env` with the required credentials
 
 #### Run
-Run the validator script:
+Run the validator script with `pm2`.
+
+**Mainnet**:
 ```sh
-python neurons/validator.py \
+pm2 start neurons/validator.py --name agentao-validator -- \
     --netuid 62 \
     --wallet.name <wallet> \
     --wallet.hotkey <hotkey>
 ```
-For the full list of Agentao-specific arguments and their possible values, run `python neurons/validator.py --help`.
+
+**Testnet**:
+```sh
+pm2 start neurons/validator.py --name agentao-validator -- \
+    --netuid 244 \
+    --subtensor.chain_endpoint wss://test.finney.opentensor.ai:443 \
+    --wallet.name <wallet> \
+    --wallet.hotkey <hotkey>
+```
+If you are running in a virtual environment, remember to add the `--interpreter <venv>/bin/python3` flag before the `--`.
 
 ### Logs and Support
 Sending logs is fully optional, but recommended. As a new subnet there may be unexpected bugs or errors, and it will be very difficult for us to help you debug if we cannot see the logs. Use the PostHog credentials given in `.env.[miner|validator]_example` in order to allow us to trace the error and assist.
