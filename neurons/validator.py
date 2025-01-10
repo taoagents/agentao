@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import *
 from logging import Logger
 from dataclasses import asdict
+import uuid
 
 import numpy as np
 from aiohttp import BasicAuth, ClientSession
@@ -204,16 +205,15 @@ class Validator(BaseValidatorNeuron):
         )
         problem: GeneratedProblemStatement = problems[0]
 
+        problem_uuid = str(uuid.uuid4())
+        
         self.logger.info(f"Problem statement is: {problem.problem_statement[:50]}...", extra=asdict(LogContext(
             log_type="lifecycle",
             event_type="question_generated",
-            additional_properties={"question_text": problem.problem_statement, "question_id": "224"}
+            additional_properties={"question_text": problem.problem_statement, "question_id": problem_uuid}
         )))
         
-        # todo: create proper task ID
-        task_id = f"{repo}-{problem.problem_statement[:10]}"
-
-        self.logger.info(f"Sending task {task_id} to miners, ...")
+        self.logger.info(f"Sending task {problem_uuid} ({problem.problem_statement[:50]}) to miners, ...")
         responses: List[CodingTask] = await self.dendrite(
             axons=axons,
             synapse=CodingTask(
@@ -224,8 +224,13 @@ class Validator(BaseValidatorNeuron):
             deserialize=False,
             timeout=timedelta(minutes=self.miner_request_timeout_mins).total_seconds(),
         )
-        self.logger.info(f"Received patches from miners for task {task_id}: "
-                    f"{[(r.patch[:100] + '...' if r.patch else r.patch) for r in responses]}")
+        
+        for r in responses:
+            self.logger.info(f"Received responses from miners for task {problem_uuid}", extra=asdict(LogContext(
+                log_type="lifecycle",
+                event_type="miner_submitted",
+                additional_properties={"miner_hotkey": r.axon.hotkey, "question_id": problem_uuid}
+            )))
 
         working_miner_uids: List[int] = []
         finished_responses: List[IssueSolution] = []
@@ -250,7 +255,7 @@ class Validator(BaseValidatorNeuron):
         
         # TODO: Add punishment for miners who did not respond
 
-        self.logger.info(f"Running task-specific handlers for {task_id}")
+        self.logger.info(f"Running task-specific handlers for {problem_uuid}")
         await self.handle_synthetic_patch_response(
             repo,
             problem,
