@@ -50,7 +50,7 @@ class ValidatorDefaults:
         min_file_content_len=50,
     )
 
-MAX_MINERS_PER_PROBLEM: Final[int] = 10
+MAX_MINERS_PER_PROBLEM: Final[int] = 20
 
 class Validator(BaseValidatorNeuron):
     """
