@@ -34,7 +34,7 @@ def record_generated_question(
     question_id: str,
     submitting_hotkey: str,
     is_mainnet: bool,
-    base_url: str = "http://localhost:3000"
+    base_url: str = "https://agentao-dashboard.vercel.app/"
 ) -> requests.Response:
     endpoint = f"{base_url}/api/trpc/question.recordGeneratedQuestion"
     
@@ -63,7 +63,7 @@ def record_solution_selected(
     submitting_hotkey: str,
     is_mainnet: bool,
     grade: int,
-    base_url: str = "http://localhost:3000"
+    base_url: str = "https://agentao-dashboard.vercel.app/"
 ) -> requests.Response:
     endpoint = f"{base_url}/api/trpc/question.recordSolutionSelected"
    
@@ -92,7 +92,7 @@ def record_miner_submission(
     submitting_hotkey: str,
     miner_hotkey: str,
     is_mainnet: bool,
-    base_url: str = "http://localhost:3000"
+    base_url: str = "https://agentao-dashboard.vercel.app/"
 ) -> requests.Response:
     endpoint = f"{base_url}/api/trpc/question.recordMinerSubmitted"
 
