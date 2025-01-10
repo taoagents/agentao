@@ -27,8 +27,7 @@ import numpy as np
 from aiohttp import BasicAuth, ClientSession
 
 from agentao.base.validator import BaseValidatorNeuron, TaskType
-from agentao.helpers.classes import GeneratedProblemStatement, IngestionHeuristics, \
-    IssueSolution
+from agentao.helpers.classes import GeneratedProblemStatement, IssueSolution
 from agentao.helpers.clients import LOGGER
 from agentao.helpers.constants import SUPPORTED_VALIDATOR_MODELS
 from agentao.helpers.helpers import clone_repo, exponential_decay
@@ -38,19 +37,9 @@ from agentao.utils.uids import check_uid_availability
 from agentao.validator.generate_problem import create_problem_statements
 from agentao.validator.graders.abstract_grader import MinerSubmission
 from agentao.validator.graders.trueskill_grader import TrueSkillGrader
-from neurons.constants import LLM_EVAL_MULT, PROCESS_TIME_MULT
+from neurons.constants import LLM_EVAL_MULT, PROCESS_TIME_MULT, ValidatorDefaults
 from neurons.constants import UPLOAD_ISSUE_ENDPOINT
 
-
-class ValidatorDefaults:
-    CODINGTASK_TIMEOUT_MINS = 30.
-    MODEL = "gpt4o"
-    INGESTION_HEURISTICS = IngestionHeuristics(
-        min_files_to_consider_dir_for_problems=3,
-        min_file_content_len=50,
-    )
-
-MAX_MINERS_PER_PROBLEM: Final[int] = 20
 
 class Validator(BaseValidatorNeuron):
     """
@@ -68,7 +57,6 @@ class Validator(BaseValidatorNeuron):
         miner_request_timeout: int = ValidatorDefaults.CODINGTASK_TIMEOUT_MINS,
     ):
         super(Validator, self).__init__(config=config)
-
         LOGGER.info("load_state()")
         self.load_state()
 
@@ -160,10 +148,10 @@ class Validator(BaseValidatorNeuron):
         ]
         LOGGER.info(f"Found {len(miner_uids)} miner UIDs: {miner_uids}")
 
-        if len(miner_uids) > MAX_MINERS_PER_PROBLEM:
-            miner_uids = random.sample(miner_uids, MAX_MINERS_PER_PROBLEM)
+        if len(miner_uids) > ValidatorDefaults.MAX_MINERS_PER_PROBLEM:
+            miner_uids = random.sample(miner_uids, ValidatorDefaults.MAX_MINERS_PER_PROBLEM)
             LOGGER.info(
-                f"Subsampling {MAX_MINERS_PER_PROBLEM} uids from list of {len(miner_uids)}. Subsampled miner UIDs: {miner_uids}"
+                f"Subsampling {ValidatorDefaults.MAX_MINERS_PER_PROBLEM} uids from list of {len(miner_uids)}. Subsampled miner UIDs: {miner_uids}"
             )
 
         if len(miner_uids) == 0:

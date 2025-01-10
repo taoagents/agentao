@@ -1,10 +1,9 @@
 from dataclasses import is_dataclass, dataclass, asdict, fields
 from pathlib import Path
 from textwrap import dedent
-from typing import Any, Dict, TypedDict, Type, TypeVar, Union, get_origin, get_args
-from typing import List, Callable, Optional
+from typing import Any, Dict, Type, TypeVar, Union, get_origin, get_args
+from typing import List, Optional
 
-from jinja2 import Template
 from pydantic import BaseModel
 
 T = TypeVar('T')
