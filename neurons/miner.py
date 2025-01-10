@@ -13,6 +13,9 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import argparse
 import os
 import tempfile
