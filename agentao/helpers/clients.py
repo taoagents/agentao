@@ -14,7 +14,7 @@ load_dotenv()
 
 lifecycle_events = {
     "question_generated": ["question_id", "question_text"],
-    "miner_submitted": ["question_id", "miner_hotkey"],
+    "miner_submitted": ["question_id", "miner_hotkey", "patch"],
     "solution_selected": ["question_id", "grade", "miner_hotkey"]
 }
 
@@ -29,12 +29,14 @@ class LogSessionContext:
     def to_dict(self):
         return asdict(self)
 
+BASE_URL = "https://agentao-dashboard.vercel.app"
+
 def record_generated_question(
     question_text: str,
     question_id: str,
     submitting_hotkey: str,
     is_mainnet: bool,
-    base_url: str = "https://agentao-dashboard.vercel.app/"
+    base_url: str = BASE_URL
 ) -> requests.Response:
     endpoint = f"{base_url}/api/trpc/question.recordGeneratedQuestion"
     
@@ -49,10 +51,17 @@ def record_generated_question(
     
     headers = {
         "Content-Type": "application/json",
-        "User-Agent": "agentao-client/1.0"
     }
     
-    response = requests.post(endpoint, json=payload, headers=headers)
+    print(f"Sending request to {endpoint} with payload {payload}")
+    import json
+    print(json.dumps(payload, indent=2))
+    response = requests.post(
+        url=endpoint, 
+        headers=headers,
+        json=payload
+    )
+    
     response.raise_for_status()
     
     return response
@@ -63,7 +72,7 @@ def record_solution_selected(
     submitting_hotkey: str,
     is_mainnet: bool,
     grade: int,
-    base_url: str = "https://agentao-dashboard.vercel.app/"
+    base_url: str = BASE_URL
 ) -> requests.Response:
     endpoint = f"{base_url}/api/trpc/question.recordSolutionSelected"
    
@@ -83,7 +92,7 @@ def record_solution_selected(
     }
     
     response = requests.post(endpoint, json=payload, headers=headers)
-    response.raise_for_status()  # Raises an HTTPError for bad responses (4xx, 5xx)
+    response.raise_for_status()
     
     return response
 
@@ -92,7 +101,8 @@ def record_miner_submission(
     submitting_hotkey: str,
     miner_hotkey: str,
     is_mainnet: bool,
-    base_url: str = "https://agentao-dashboard.vercel.app/"
+    patch: str,
+    base_url: str = BASE_URL
 ) -> requests.Response:
     endpoint = f"{base_url}/api/trpc/question.recordMinerSubmitted"
 
@@ -101,7 +111,8 @@ def record_miner_submission(
             "question_id": question_id,
             "miner_hotkey": miner_hotkey,
             "submitting_hotkey": submitting_hotkey,
-            "is_mainnet": is_mainnet
+            "is_mainnet": is_mainnet,
+            "patch": patch
         }
     }
 
@@ -186,6 +197,13 @@ class AgentaoHandler(logging.Handler):
                 if key not in LOG_RECORD_BUILTIN_ATTRS:
                     properties[key] = val
 
+            # Unwrap additional_properties if they exist
+            if 'additional_properties' in properties:
+                additional_props = properties.pop('additional_properties')
+                if additional_props:
+                    properties.update(additional_props)
+
+            print(f"Properties: {properties}")
             formatted_properties = {
                 "description": record.message,
                 **self._context.to_dict(),
@@ -232,7 +250,8 @@ class AgentaoHandler(logging.Handler):
                         question_id=formatted_properties.get("question_id"),
                         submitting_hotkey=self._context.actor_id,
                         miner_hotkey=formatted_properties.get("miner_hotkey"),
-                        is_mainnet=self._context.is_mainnet
+                        is_mainnet=self._context.is_mainnet,
+                        patch=formatted_properties.get("patch")
                     )
                 
                 elif event_type == "solution_selected":
@@ -244,15 +263,13 @@ class AgentaoHandler(logging.Handler):
                         grade=formatted_properties.get("grade")
                     )
 
-            elif log_type == "internal":
+            else:
                 if self._posthog_enabled:
                     posthog.capture(
                         distinct_id=self._context.actor_id,
                         event=event_type or record.message,
                         properties=formatted_properties
                     )
-            else:
-                raise ValueError(f"Invalid log type: {log_type}")
 
             if flush_posthog_value == True:
                 posthog.flush()
@@ -265,7 +282,7 @@ def setup_logger(logger_name: str, log_session_context: LogSessionContext) -> Lo
     if logger.hasHandlers():
         logger.handlers.clear()
 
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
 
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
@@ -276,12 +293,15 @@ def setup_logger(logger_name: str, log_session_context: LogSessionContext) -> Lo
     return logger
 
 if __name__ == "__main__":
+    import uuid 
+
+    test_uuid = str(uuid.uuid4())
     log_session_context = LogSessionContext(
         actor_id="1289",
         actor_type="validator",
-        session_id="1000",
+        session_id="283823990239",
         is_mainnet=False,
-        log_version=5,
+        log_version=7,
     )
 
     example_internal_log = LogContext(
@@ -296,7 +316,7 @@ if __name__ == "__main__":
     example_lifecycle_log = LogContext(
         log_type="lifecycle",
         event_type="question_generated",
-        additional_properties={"question_text": "new question generated!", "question_id": "224"}
+        additional_properties={"question_text": "new question generated!", "question_id": test_uuid}
     )
 
     my_logger: Logger = setup_logger(logger_name="validator_n", log_session_context=log_session_context)
