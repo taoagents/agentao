@@ -301,6 +301,12 @@ Run the subnet miner:
 python neurons/miner.py --netuid 1 --subtensor.chain_endpoint ws://127.0.0.1:9946 --wallet.name miner --wallet.hotkey default --logging.debug
 ```
 
+If you want to run the miner in mock mode, you can use the `--use-mock-responses` flag:
+
+```bash
+python neurons/miner.py --netuid 1 --subtensor.chain_endpoint ws://127.0.0.1:9946 --wallet.name miner --wallet.hotkey default --logging.debug --use-mock-responses
+```
+
 Run the subnet validator:
 
 ```bash

@@ -77,7 +77,7 @@ class Validator(BaseValidatorNeuron):
             actor_id=hotkey,
             actor_type="validator",
             is_mainnet=self.subtensor.network == "finney",
-            log_version=6,
+            log_version=7,
             session_id=''.join(random.choices(''.join(map(chr, range(33,127))), k=8))
         )
 
@@ -226,11 +226,13 @@ class Validator(BaseValidatorNeuron):
         )
         
         for r in responses:
-            self.logger.info(f"Received responses from miners for task {problem_uuid}", extra=asdict(LogContext(
-                log_type="lifecycle",
-                event_type="miner_submitted",
-                additional_properties={"miner_hotkey": r.axon.hotkey, "question_id": problem_uuid}
-            )))
+            # Only record the submission if there is actually a patch
+            if r.patch not in [None, ""]:
+                self.logger.info(f"Received responses from miners for task {problem_uuid}", extra=asdict(LogContext(
+                    log_type="lifecycle",
+                    event_type="miner_submitted",
+                    additional_properties={"miner_hotkey": r.axon.hotkey, "question_id": problem_uuid, "patch": r.patch}
+                )))
 
         working_miner_uids: List[int] = []
         finished_responses: List[IssueSolution] = []
