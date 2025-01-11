@@ -21,6 +21,10 @@ ANTHROPIC_MODELS: Final[List[str]] = [
     "claude-3-5-sonnet",
 ]
 
+CORCEL_MODELS: Final[List[str]] = [
+    "cortext-ultra",
+]
+
 MODEL_NAME_TO_ENVAR_NAME: Final[Dict[str, str]] = (
         {model: "OPENAI_API_KEY" for model in OPENAI_MODELS} |
         {model: "ANTHROPIC_API_KEY" for model in ANTHROPIC_MODELS}
