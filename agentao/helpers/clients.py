@@ -2,6 +2,7 @@ import logging
 import os
 from datetime import datetime
 from logging import Logger
+
 import posthog
 import pytz
 from dotenv import load_dotenv
@@ -164,32 +165,16 @@ class ESTFormatter(logging.Formatter):
         record.levelname = f"{record.levelname:<5}"
         return super().format(record)
 
+
 formatter = ESTFormatter('%(asctime)s - %(filename)s:%(lineno)d [%(levelname)s] %(message)s')
 
-# Get all built-in LogRecord attributes by creating a dummy record and getting its __dict__ keys
-LOG_RECORD_BUILTIN_ATTRS = list(logging.LogRecord("", 0, "", 0, "", (), None).__dict__.keys())
 
-class AgentaoHandler(logging.Handler):
-    def __init__(self, context: LogSessionContext):
+class PostHogHandler(logging.Handler):
+    def __init__(self):
         super().__init__()
         self.setFormatter(formatter)
-        self._context = context
 
-        self._posthog_enabled = False
-
-        if os.environ.get("POSTHOG_KEY") and os.environ.get("POSTHOG_HOST"):
-            try:
-                posthog.api_key = os.environ["POSTHOG_KEY"]
-                posthog.host = os.environ["POSTHOG_HOST"]
-                self._posthog_enabled = True
-            except Exception as e:
-                print(f"Failed to initialize PostHog handler: {e}")
-                self._posthog_enabled = False
-    
     def emit(self, record):
-        if self._posthog_enabled == False:
-            return 
-        
         try:
             properties = {}
 
@@ -276,20 +261,34 @@ class AgentaoHandler(logging.Handler):
         except Exception:
             self.handleError(record)
 
-def setup_logger(logger_name: str, log_session_context: LogSessionContext) -> Logger:
-    logger = logging.getLogger(logger_name)
 
+def setup_logger() -> Logger:
+    # Clear any existing handlers to avoid conflicts
+    logger = logging.getLogger(__name__)
     if logger.hasHandlers():
         logger.handlers.clear()
 
     logger.setLevel(logging.INFO)
 
+    # Create formatter and console handler
+    formatter = ESTFormatter('%(asctime)s - %(filename)s:%(lineno)d [%(levelname)s] %(message)s')
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
-    
     logger.addHandler(console_handler)
-    logger.addHandler(AgentaoHandler(context=log_session_context))
 
+    # Add PostHog handler if environment variables are set
+    posthog_enabled = False
+    if os.environ.get("POSTHOG_KEY") and os.environ.get("POSTHOG_HOST"):
+        try:
+            posthog.api_key = os.environ["POSTHOG_KEY"]
+            posthog.host = os.environ["POSTHOG_HOST"]
+            logger.addHandler(PostHogHandler())
+            posthog_enabled = True
+        except Exception as e:
+            logger.warning(f"Failed to initialize PostHog handler: {e}")
+
+    # Attach the posthog_enabled flag to the logger
+    logger.posthog_enabled = posthog_enabled
     return logger
 
 if __name__ == "__main__":

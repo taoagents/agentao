@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-echo "y" | btcli config set --subtensor.network ws://127.0.0.1:9946 --wallet.path ~/.bittensor/wallets
+echo "y" | btcli config set --subtensor.network ws://127.0.0.1:9944 --wallet.path ~/.bittensor/wallets
 
 # Create subnet and owner
 btcli wallet faucet --wallet.name owner --max-successes 5 --no_prompt

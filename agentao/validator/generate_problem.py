@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from textwrap import dedent
 from typing import List, Final, Union, Callable
+import random
 
 import openai
 from jinja2 import Template
@@ -12,8 +13,6 @@ from agentao.helpers.classes import FilePair, GeneratedProblemStatement, \
     ValidatorModelStats, IngestionHeuristics
 from agentao.helpers.helpers import calculate_price
 from agentao.validator.ingest import get_all_filepairs
-
-from logging import Logger
 
 PROBLEM_STATEMENT_TEMPLATE: Final[Template] = Template(
     dedent("""
@@ -63,10 +62,9 @@ def highest_cosine_filepair_selector(file_pairs: List[FilePair]) -> FilePair:
         file_pairs,
         key=lambda x: float(x.cosine_similarity),
         reverse=True
-    )[0]
+    )[random.randint(1, 10)]
 
     return selected_file_pair
-
 
 def create_problem_statements(
     validator_llm: str,
@@ -101,14 +99,12 @@ def create_problem_statements(
 def generate_problems_for_single_repo(
     repo_path: Path,
     ingestion_heuristics: IngestionHeuristics,
-    problem_generation_params: ProblemGeneratorParameters,
-    logger: Logger
+    problem_generation_params: ProblemGeneratorParameters
 ) -> List[GeneratedProblemStatement]:
     file_pairs = get_all_filepairs(
         repo_path,
-        logger=logger,
         heuristics=ingestion_heuristics,
-        refresh=False,
+        refresh=False
     )
 
     # Generate one problem statement, with prompt and model to benchmark

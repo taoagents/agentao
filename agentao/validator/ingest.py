@@ -22,7 +22,8 @@ import openai
 import tiktoken
 
 from agentao.helpers.classes import EmbeddedFile, FilePair, IngestionHeuristics
-from logging import Logger
+from agentao.helpers.clients import LOGGER
+
 
 OPENAI_CLIENT: Final[openai.Client] = openai.Client(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -62,7 +63,7 @@ def walk_repository(repo_path: Path) -> Dict:
 def cosine_similarity(a, b):
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
-def evaluate_for_context(dir_path, repo_structure, heuristics: IngestionHeuristics, logger: Logger):
+def evaluate_for_context(dir_path, repo_structure, heuristics: IngestionHeuristics):
 
     def _retrieve_files_in_dir():
         # Get all files in the current directory
@@ -79,7 +80,7 @@ def evaluate_for_context(dir_path, repo_structure, heuristics: IngestionHeuristi
                     }
                 )
             except (UnicodeDecodeError, IOError):
-                logger.exception(f"Warning: Could not read file {path}")
+                LOGGER.exception(f"Warning: Could not read file {path}")
                 continue
 
         return files
@@ -173,7 +174,6 @@ def load_filepairs_from_cache(cache_path: str) -> List[FilePair]:
     
 def get_all_filepairs(
     local_repo: Path, 
-    logger: Logger,
     heuristics: IngestionHeuristics = SAMPLE_INGESTION_HEURISTICS,
     refresh: bool = False,
 ) -> List[FilePair]:
@@ -190,7 +190,7 @@ def get_all_filepairs(
     for dir_path, contents in repo_structure.items():
         full_path = os.path.join(local_repo, dir_path) if dir_path else local_repo
         if contents['files']:
-            file_pairs.append(evaluate_for_context(full_path, contents, heuristics=heuristics, logger=logger))
+            file_pairs.append(evaluate_for_context(full_path, contents, heuristics=heuristics))
 
     valid_pairs = [pair for pair in file_pairs if pair and isinstance(pair, FilePair)]
     if not valid_pairs:
@@ -207,13 +207,10 @@ def get_all_filepairs(
 if __name__ == "__main__":
     current_dir = Path(__file__).parent
     sample_repo = current_dir.parent / "sample-repo"
-
-    logger = Logger("ingest")
     file_pairs = get_all_filepairs(
         sample_repo,
-        logger=logger,
-        refresh=True,
+        refresh=True
     )
     
     for pair in file_pairs:
-        print(f"{pair} {type(pair)}")
+        LOGGER.info(f"{pair} {type(pair)}")

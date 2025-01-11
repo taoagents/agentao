@@ -51,8 +51,7 @@ with tempfile.NamedTemporaryFile(suffix=".yaml", mode="w") as temp_env_file:
     patch = generate_code_patch(
         MinerDefaults.MODEL,
         test_unsolved_issue,
-        MinerDefaults.MAX_INSTANCE_COST,
-        logger
+        MinerDefaults.MAX_INSTANCE_COST
     ).patch
 
     # Breakpoint for debugging/analysis
