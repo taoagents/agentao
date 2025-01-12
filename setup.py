@@ -80,6 +80,7 @@ setup(
         "trueskill",
         "starlette>=0.30.0",
         "pydantic>=2",
+        "pylint",
         "rich>=13",
         "pytest>=8",
         "numpy>=1",
