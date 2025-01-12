@@ -20,7 +20,6 @@ from typing import Optional
 import bittensor as bt
 
 
-class CodingTask(bt.Synapse):
     """
     A simple dummy protocol representation which uses bt.Synapse as its base.
     This protocol helps in handling dummy request and response communication between
