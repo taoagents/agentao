@@ -169,11 +169,19 @@ pm2 start neurons/miner.py --name agentao-miner -- \
 ```
 If you are running in a virtual environment, remember to add the `--interpreter <venv>/bin/python3` flag before the `--`.
 
-#### Tips for Better Incentive
+#### Some helpful tips
 Here are some tips for improving your miner:
 - Try a different autonomous agent framework, e.g. AutoCodeRover (Devin?)
 - Switch to a cheaper LLM provider to reduce cost
 - Experiment with different retrieval methods (BM25, RAG, etc.)
+- If sweagent is not appearing for autocompletion in VSCode/Cursor, add a `.vscode/settings.json` file with the following:
+```json
+{
+    "python.analysis.extraPaths": [
+        "./SWE-agent"
+    ]
+}
+```
 
 ## Running a validator
 

@@ -121,3 +121,5 @@ PRICING_DATA_PER_MILLION_TOKENS: Final[Dict[str, Dict[str, float]]] = {
         "output": 15.00,
     }
 }
+
+BASE_DASHBOARD_URL: Final[str] = "https://agentao-dashboard.vercel.app"
