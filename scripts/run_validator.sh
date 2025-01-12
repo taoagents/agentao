@@ -15,9 +15,11 @@ sleep_duration_s=300  # Sleep 5 minutes between update checks
 branch="$(git branch --show-current)"
 auto_update_enabled=${AGENTAO_VALIDATOR_AUTO_UPDATE:-1}
 
+DEFAULT_PROC_NAME="agentao-validator"  # in absence of --name flag
+
 ######## Extract --name flag ###########################
 args=("$@")  # Copy arguments to a new array so that we can use shift
-proc_name="agentao-validator"  # Default name if --name flag not given
+proc_name="$DEFAULT_PROC_NAME"
 for ((i = 1; i <= $#; i++)); do
   arg="${!i}"
   next_index=$((i + 1))
@@ -25,6 +27,7 @@ for ((i = 1; i <= $#; i++)); do
   if [[ $arg == "--" ]]; then
     break
   elif [[ $arg == "--name" ]]; then
+    next_arg="${!next_index}"
     proc_name="$next_arg"
   elif [[ $arg == --name=* ]]; then
     proc_name="${arg#--name=}"
