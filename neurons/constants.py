@@ -19,3 +19,4 @@ class ValidatorDefaults:
     )
     NEURON_NUM_CONCURRENT_FORWARDS: Final[int] = 3
     MAX_MINERS_PER_PROBLEM: Final[int] = 20
+    NO_RESPONSE_MIN: Final[float] = 0.005
