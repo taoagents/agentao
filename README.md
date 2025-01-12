@@ -95,7 +95,7 @@ As the network grows, Cerebro evolves to efficiently transform problem statement
  training datasets.
 - [ ] Deploy `Taogod Terminal` as the initial open-issue source.
 - [ ] Launch a website with observability tooling and a leaderboard.
-- [ ] Publish open-source dataset on HuggingFace.
+- [x] Publish open-source dataset on HuggingFace.
 - [ ] Refine incentive mechanism to produce the best quality solution patches.
 
 **Epoch 2: Ground**
