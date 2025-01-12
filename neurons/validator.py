@@ -92,15 +92,21 @@ class Validator(BaseValidatorNeuron):
         """
         Validate the responses from the miners. This function should score the responses and return a list of rewards for each miner.
         """
-        llm_evals = np.array(self.grader.grade([
-            MinerSubmission(
-                repo=repo, 
-                problem=problem, 
-                solution=issue_solution,
-                miner_hotkey=hk,
-            ) for issue_solution, hk in zip(issue_solutions, miner_hotkeys)
-        ]))
+        try:
+            grades = self.grader.grade([
+                MinerSubmission(
+                    repo=repo, 
+                    problem=problem, 
+                    solution=issue_solution,
+                    miner_hotkey=hk,
+                ) for issue_solution, hk in zip(issue_solutions, miner_hotkeys)
+            ])
+        except Exception as e:
+            self.logger.exception("Error grading submissions")
+            return np.zeros(len(miner_hotkeys))
 
+        llm_evals = np.array(grades)
+        
         response_times = np.array([
             exponential_decay(self.miner_request_timeout_mins * 60, t)
             for t in process_times

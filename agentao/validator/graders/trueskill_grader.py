@@ -2,6 +2,8 @@ from typing import List, Dict
 import trueskill
 import numpy as np
 from logging import Logger
+import os
+import json
 
 from agentao.validator.graders.abstract_grader import GraderInterface, MinerSubmission
 from agentao.validator.graders.float_grader import FloatGrader
@@ -20,7 +22,35 @@ class TrueSkillGrader(GraderInterface):
         self.num_runs = 0
         self.apha = np.log(4) / self.env.beta
 
+        # Initialize cached ratings
+        self.initialize()
+
+    def initialize(self) -> None:
+        """
+        Initialize ratings for miners if available.
+        """
+        try:
+            # Get the parent directory of this file
+            parent_dir = os.path.dirname(os.path.abspath(__file__))
+            with open(parent_dir + "/ratings.json", "r") as f:
+                state = json.load(f)
+        except FileNotFoundError as e:
+            # The file did not exist, so we do nothing
+            return
+        for miner_hotkey, rating in state.items():
+            self.ratings[miner_hotkey] = self.env.create_rating(mu=rating[0], sigma=rating[1])
+
+    def save_state(self) -> None:
+        """
+        Save the state of the ratings to a file.
+        """
+        # Get the parent directory of this file
+        parent_dir = os.path.dirname(os.path.abspath(__file__))
+        with open(parent_dir + "/ratings.json", "w") as f:
+            json.dump({k: [v.mu, v.sigma] for k, v in self.ratings.items()}, f)
+
     def grade(self, submissions: List[MinerSubmission]) -> List[float]:
+        self.logger.info(f"Grading {len(submissions)} miners")
         # Initialize any new miners
         for submission in submissions:
             if submission.miner_hotkey not in self.ratings:
@@ -42,6 +72,9 @@ class TrueSkillGrader(GraderInterface):
             miner_rating = self.ratings[submission.miner_hotkey]
             miner_rating = miner_rating.mu - 3 * miner_rating.sigma
             ratings.append(1 / (1 + np.exp(-self.apha * (miner_rating - mean_score))))
+
+        self.save_state()
+        self.logger.info(f"Ratings: {ratings}")
 
         return ratings
 
