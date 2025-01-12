@@ -30,11 +30,16 @@ To create a more versatile color theming capability in this software system, dev
 
 Ensure the solution adheres to these steps while maintaining testability and efficient use of resources.
 """
+
+from logging import Logger
+logger = Logger("test_miner")
+
 response = generate_code_patch(
     "claude-sonnet-3.5",
     UnsolvedIssue(
         desc=sample_issue,
         local_code_path=Path("../gh-issue-pull/analysis/seaborn")
     ),
+    logger=logger,
 )
 ipdb.set_trace()

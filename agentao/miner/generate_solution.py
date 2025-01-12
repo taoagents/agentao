@@ -20,8 +20,7 @@ from sweagent.environment.utils import (
 from sweagent.types import AgentInfo, TrajectoryStep
 
 from agentao.helpers.classes import UnsolvedIssue, IssueSolution, MinerModelStats
-from agentao.helpers.clients import LOGGER
-
+from logging import Logger
 
 @dataclass(frozen=True)
 class ActionsArguments(FlattenedAccess, FrozenSerializable):
@@ -116,7 +115,10 @@ def create_script_arguments(
     )
 
 def generate_code_patch(
-        model_name: str, unsolved_issue: UnsolvedIssue, instance_cost_limit: float
+    model_name: str, 
+    unsolved_issue: UnsolvedIssue, 
+    instance_cost_limit: float,
+    logger: Logger
 ) -> IssueSolution:
     script_arguments = create_script_arguments(model_name, unsolved_issue, instance_cost_limit)
 
@@ -127,7 +129,7 @@ def generate_code_patch(
     trajectories_dir = Path.cwd() / "trajectories"
     trajectories_dir.mkdir(exist_ok=True)
 
-    LOGGER.info("Running sweagent...")
+    logger.info("Running sweagent...")
 
     info: AgentInfo
     trajectory_steps: List[TrajectoryStep]
@@ -149,7 +151,7 @@ def generate_code_patch(
         k: (v if k not in ["edited_files30", "submission", "edited_files50"] else f"{v[:100]}...")
         for k, v in info.items()
     }
-    LOGGER.info(f"Finished running sweagent, ran for {duration_s:.2f}s. Received info: {pformat(readable_info)}")
+    logger.info(f"Finished running sweagent, ran for {duration_s:.2f}s. Received info: {pformat(readable_info)}")
     return IssueSolution(
         patch=info["submission"],
         model_stats=MinerModelStats.model_validate(

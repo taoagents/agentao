@@ -1,6 +1,7 @@
 from typing import List, Dict
 import trueskill
 import numpy as np
+from logging import Logger
 
 from agentao.validator.graders.abstract_grader import GraderInterface, MinerSubmission
 from agentao.validator.graders.float_grader import FloatGrader
@@ -11,10 +12,11 @@ class TrueSkillGrader(GraderInterface):
     ratings are updated based on the performance of the miners in the
     forward loop, and then normalized with a logistic function.
     """
-    def __init__(self):
+    def __init__(self, logger: Logger):
+        self.logger = logger
         self.env = trueskill.TrueSkill()
         self.ratings: Dict[str, trueskill.Rating] = {}
-        self.float_grader = FloatGrader()
+        self.float_grader = FloatGrader(logger)
         self.num_runs = 0
         self.apha = np.log(4) / self.env.beta
 
