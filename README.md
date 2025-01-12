@@ -216,15 +216,30 @@ Run the validator script via `run_validator.sh`, which will automatically keep i
 **Testnet**:
 ```sh
 ./scripts/run_validator.sh \
-    --name agentao-validator \
-    -- \
-    --netuid 244 \
-    --subtensor.chain_endpoint wss://test.finney.opentensor.ai:443 \
-    --wallet.name <wallet> \
-    --wallet.hotkey <hotkey>
+  --name agentao-validator \
+  -- \
+  --netuid 244 \
+  --subtensor.chain_endpoint wss://test.finney.opentensor.ai:443 \
+  --wallet.name <wallet> \
+  --wallet.hotkey <hotkey>
 ```
 Arguments before the `--` will get passed to the `pm2 start` command, and arguments after get passed to the `python neurons/validator.py` command. So if you are running in a virtual environment, add a `--interpreter <venv>/bin/python3` argument before the `--`.
 
+**Optional: running `run_validator.sh` with `pm2`:**
+
+You can optionally run both the validator and the auto-updater with pm2. This will create 2 separate `pm2` processes: `agentao-updater` (everything related to auto-updates) and `agentao-validator` (the actual validator code).
+
+You can run everything with `pm2` like this:
+```sh
+pm2 start ./scripts/run_validator.sh \
+  --name agentao-updater \
+  -- \
+  --name agentao-validator \
+  -- \
+  --netuid 62 \
+  --wallet.name <wallet> \
+  --wallet.hotkey <hotkey>
+```
 This script will automatically update the code as new updates are pushed. To run the validator with auto-updates off, you can run the script as `AGENTAO_VALIDATOR_AUTO_UPDATE=0 ./scripts/run_validator.sh ...`. Note that this is not recommended, as it will make it more difficult to obtain support in the case of issues.
 
 ### Logs and Support
