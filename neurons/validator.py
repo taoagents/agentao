@@ -23,6 +23,7 @@ from datetime import timedelta
 from pathlib import Path
 from typing import *
 from logging import Logger
+from dataclasses import asdict
 
 import numpy as np
 from aiohttp import BasicAuth, ClientSession
@@ -30,7 +31,7 @@ from aiohttp import BasicAuth, ClientSession
 from agentao.base.validator import BaseValidatorNeuron, TaskType
 from agentao.helpers.classes import GeneratedProblemStatement, IngestionHeuristics, \
     IssueSolution
-from agentao.helpers.clients import LogSessionContext, setup_logger
+from agentao.helpers.clients import LogSessionContext, setup_logger, LogContext
 from agentao.helpers.constants import SUPPORTED_VALIDATOR_MODELS
 from agentao.helpers.helpers import clone_repo, exponential_decay
 from agentao.protocol import CodingTask
@@ -194,7 +195,7 @@ class Validator(BaseValidatorNeuron):
         author_name, repo_name = repo.split("/")
 
         self.logger.info(f"Cloning repo {repo}...")
-        local_repo_dir = clone_repo(author_name, repo_name, current_dir.parent)
+        local_repo_dir = clone_repo(author_name, repo_name, current_dir.parent, logger=self.logger)
         self.logger.info(f"Finished cloning repo {repo}")
 
         num_problems_to_gen = 1
@@ -202,8 +203,13 @@ class Validator(BaseValidatorNeuron):
             self.model_name, repo, local_repo_dir, num_problems_to_gen, ValidatorDefaults.INGESTION_HEURISTICS
         )
         problem: GeneratedProblemStatement = problems[0]
-        self.logger.info(f"Problem statement is: {problem.problem_statement[:50]}...")
 
+        self.logger.info(f"Problem statement is: {problem.problem_statement[:50]}...", extra=asdict(LogContext(
+            log_type="lifecycle",
+            event_type="question_generated",
+            additional_properties={"question_text": problem.problem_statement, "question_id": "224"}
+        )))
+        
         # todo: create proper task ID
         task_id = f"{repo}-{problem.problem_statement[:10]}"
 
