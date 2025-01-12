@@ -1,3 +1,15 @@
+# AgenTao-specific tips:
+
+Use this function to start localnet:
+```sh
+function start-localnet() {
+    subtensor_root=<...>
+    agentao_root=<...>
+    pm2 start -f "$subtensor_root/scripts/localnet.sh" --name localnet -- False --no-purge
+    pm2 start "$agentao_root"/scripts/setup_staging_subnet.sh --name localnet-setup --no-autorestart
+}
+```
+-----
 # Running Subnet Locally
 
 This tutorial will guide you through:
