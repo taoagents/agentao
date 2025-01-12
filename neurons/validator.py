@@ -244,13 +244,7 @@ class Validator(BaseValidatorNeuron):
             self.logger.info("No miners responded. Exiting forward pass...")
             return
         
-        # Punish Miners to don't respond
-        bad_miner_uids = [uid for uid in miner_uids if uid not in working_miner_uids]
-        self.update_scores(
-            np.array([ValidatorDefaults.NO_RESPONSE_MIN] * len(bad_miner_uids)),
-            bad_miner_uids,
-            TaskType.LABELLED_ISSUE
-        )
+        # TODO: Add punishment for miners who did not respond
 
         self.logger.info(f"Running task-specific handlers for {problem_uuid}")
         await self.handle_synthetic_patch_response(
