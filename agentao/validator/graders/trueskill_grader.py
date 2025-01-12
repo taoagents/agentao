@@ -56,14 +56,6 @@ class TrueSkillGrader(GraderInterface):
             if submission.miner_hotkey not in self.ratings:
                 self.ratings[submission.miner_hotkey] = self.env.create_rating()
 
-        submissions.append(submissions[0].model_copy())
-        hotkeys = ["5CM3wC9kLtjDDE9TYGjJTBPT5vsvfwhLRvfAfPvXtQGx9NBp", "5ExbLKEv6w3fc9bnDeB5RwM8mcz8VPu2bRxdAf4yxAE4gMp8"]
-        if submissions[0].miner_hotkey == hotkeys[0]:
-            other_key = hotkeys[1]
-        else:
-            other_key = hotkeys[0]
-        submissions[1].miner_hotkey = other_key
-
         # We run the rating system thrice for steadier results when we first
         # initialize the ratings
         if len(submissions) > 1:
@@ -81,14 +73,8 @@ class TrueSkillGrader(GraderInterface):
             miner_rating = miner_rating.mu - 3 * miner_rating.sigma
             ratings.append(1 / (1 + np.exp(-self.apha * (miner_rating - mean_score))))
 
-        # Remove the second rating
-        ratings.pop()
-
         self.save_state()
         self.logger.info(f"Ratings: {ratings}")
-
-        import sys
-        sys.exit(0)
 
         return ratings
 
@@ -111,10 +97,6 @@ class TrueSkillGrader(GraderInterface):
         for k, v in self.ratings.items():
             if k in raw_scores:
                 ratings_groups.append({k: v})
-
-        self.logger.info(f"Ratings groups: {ratings_groups}")
-        self.logger.info(f"raw scores: {raw_scores}")
-        self.logger.info(f"sorted scores: {sorted_scores}")
 
         ranks = []
         for x in ratings_groups:
