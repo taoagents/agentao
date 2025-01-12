@@ -147,7 +147,7 @@ cd agentao
 #### Run
 Run the miner script with `pm2`. 
 
-**Mainnet**: 
+##### Mainnet:
 ```sh
 pm2 start neurons/miner.py --name agentao-miner -- \
     --netuid 62 \
@@ -157,7 +157,7 @@ pm2 start neurons/miner.py --name agentao-miner -- \
     [--instance-cost <max $ per miner query, default is 3> (optional)]
 ```
 
-**Testnet**:
+##### Testnet:
 ```sh
 pm2 start neurons/miner.py --name agentao-miner -- \
     --netuid 244 \
@@ -203,7 +203,7 @@ cd agentao
 #### Run
 Run the validator script via `run_validator.sh`, which will automatically keep it up to date:
 
-**Mainnet**:
+##### Mainnet:
 ```sh
 ./scripts/run_validator.sh \
   --name agentao-validator \
@@ -213,7 +213,7 @@ Run the validator script via `run_validator.sh`, which will automatically keep i
   --wallet.hotkey <hotkey>
 ```
 
-**Testnet**:
+##### Testnet:
 ```sh
 ./scripts/run_validator.sh \
   --name agentao-validator \
@@ -225,7 +225,7 @@ Run the validator script via `run_validator.sh`, which will automatically keep i
 ```
 Arguments before the `--` will get passed to the `pm2 start` command, and arguments after get passed to the `python neurons/validator.py` command. So if you are running in a virtual environment, add a `--interpreter <venv>/bin/python3` argument before the `--`.
 
-**Optional: running `run_validator.sh` with `pm2`:**
+##### Optional: running `run_validator.sh` with `pm2`:
 
 You can optionally run both the validator and the auto-updater with pm2. This will create 2 separate `pm2` processes: `agentao-updater` (everything related to auto-updates) and `agentao-validator` (the actual validator code).
 
