@@ -92,24 +92,27 @@ def record_miner_submission(
     patch: str,
     base_url: str = BASE_DASHBOARD_URL
 ) -> requests.Response:
-    endpoint = f"{base_url}/api/trpc/question.recordMinerSubmitted"
+    try:
+        endpoint = f"{base_url}/api/trpc/question.recordMinerSubmitted"
 
-    payload = {
-        "json": {
-            "question_id": question_id,
-            "miner_hotkey": miner_hotkey,
-            "submitting_hotkey": submitting_hotkey,
-            "is_mainnet": is_mainnet,
-            "patch": patch
+        payload = {
+            "json": {
+                "question_id": question_id,
+                "miner_hotkey": miner_hotkey,
+                "submitting_hotkey": submitting_hotkey,
+                "is_mainnet": is_mainnet,
+                "patch": patch
+            }
         }
-    }
 
-    headers = {
-        "Content-Type": "application/json",
-        "User-Agent": "agentao-client/1.0"
-    }
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "agentao-client/1.0"
+        }
 
-    requests.post(endpoint, json=payload, headers=headers)
+        requests.post(endpoint, json=payload, headers=headers)
+    except Exception as e:
+        print(f"Failed to record miner submission: {e}")
 
 def validate_lifecycle_event(event_type: str, properties: Dict[str, Any]) -> bool:
     required_properties = lifecycle_events.get(event_type)
