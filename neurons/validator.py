@@ -100,7 +100,7 @@ class Validator(BaseValidatorNeuron):
                 miner_hotkey=hk,
             ) for issue_solution, hk in zip(issue_solutions, miner_hotkeys)
         ]))
-
+        
         response_times = np.array([
             exponential_decay(self.miner_request_timeout_mins * 60, t)
             for t in process_times

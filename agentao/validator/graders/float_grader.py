@@ -100,7 +100,7 @@ def _grade_miner_solution(miner_submission: MinerSubmission, logger: Logger) -> 
     miner_solution = miner_submission.solution
 
     OPENAI_CLIENT: Final[openai.Client] = openai.Client(api_key=os.getenv("OPENAI_API_KEY"))
-    cleaned_patch = preprocess_patch(repo, miner_solution.patch)
+    cleaned_patch = preprocess_patch(repo, miner_solution.patch, logger)
 
     if cleaned_patch == "":
         logger.info(f"Patch is empty, terminating early...")
