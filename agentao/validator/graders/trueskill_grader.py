@@ -76,6 +76,8 @@ class TrueSkillGrader(GraderInterface):
 
         self.save_state()
 
+        self.logger.info(f"Ratings: {ratings}")
+
         return ratings
 
     def update_ratings(
@@ -111,3 +113,9 @@ class TrueSkillGrader(GraderInterface):
         for rating_result in new_ratings:
             for mhk, rating in rating_result.items():
                 self.ratings[mhk] = rating
+
+if __name__ == "__main__":
+    ratings = {}
+    parent_dir = os.path.dirname(os.path.abspath(__file__))
+    with open(parent_dir + "/ratings.json", "w") as f:
+            json.dump({k: [v.mu, v.sigma] for k, v in {}}, f)
