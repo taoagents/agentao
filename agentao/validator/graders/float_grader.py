@@ -168,4 +168,4 @@ if __name__ == "__main__":
             solution=sample_diff
     )])
 
-    print(f"Grade response {scores}")
+    logger.info(f"Grade response {scores}")

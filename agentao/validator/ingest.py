@@ -26,8 +26,6 @@ from logging import Logger
 
 OPENAI_CLIENT: Final[openai.Client] = openai.Client(api_key=os.getenv("OPENAI_API_KEY"))
 
-print("SHSHDHSDHHSD", os.getenv("OPENAI_API_KEY"))
-
 SAMPLE_INGESTION_HEURISTICS = IngestionHeuristics(
     min_files_to_consider_dir_for_problems=5,
     min_file_content_len=50
@@ -94,7 +92,7 @@ def evaluate_for_context(dir_path, repo_structure, heuristics: IngestionHeuristi
         # Return list of embedding vectors
         return [data.embedding for data in response.data]
 
-    def _find_most_similar_files(embedded_files: List[EmbeddedFile]) -> FilePair:
+    def _find_most_similar_files(embedded_files: List[EmbeddedFile]) -> Optional[FilePair]:
         max_similarity = -1
         most_similar_pair = None
 
@@ -216,4 +214,4 @@ if __name__ == "__main__":
     )
     
     for pair in file_pairs:
-        print(f"{pair} {type(pair)}")
+        logger.info(f"{pair} {type(pair)}")

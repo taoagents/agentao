@@ -9,7 +9,7 @@ from enum import Enum
 from dataclasses import dataclass, asdict
 from typing import Any, Dict, Optional
 import requests
-
+from agentao.helpers.constants import BASE_DASHBOARD_URL
 load_dotenv()
 
 lifecycle_events = {
@@ -29,14 +29,12 @@ class LogSessionContext:
     def to_dict(self):
         return asdict(self)
 
-BASE_URL = "https://agentao-dashboard.vercel.app"
-
 def record_generated_question(
     question_text: str,
     question_id: str,
     submitting_hotkey: str,
     is_mainnet: bool,
-    base_url: str = BASE_URL
+    base_url: str = BASE_DASHBOARD_URL
 ) -> requests.Response:
     endpoint = f"{base_url}/api/trpc/question.recordGeneratedQuestion"
     
@@ -53,18 +51,11 @@ def record_generated_question(
         "Content-Type": "application/json",
     }
     
-    print(f"Sending request to {endpoint} with payload {payload}")
-    import json
-    print(json.dumps(payload, indent=2))
-    response = requests.post(
+    requests.post(
         url=endpoint, 
         headers=headers,
         json=payload
     )
-    
-    response.raise_for_status()
-    
-    return response
 
 def record_solution_selected(
     question_id: str,
@@ -72,7 +63,7 @@ def record_solution_selected(
     submitting_hotkey: str,
     is_mainnet: bool,
     grade: int,
-    base_url: str = BASE_URL
+    base_url: str = BASE_DASHBOARD_URL
 ) -> requests.Response:
     endpoint = f"{base_url}/api/trpc/question.recordSolutionSelected"
    
@@ -91,10 +82,7 @@ def record_solution_selected(
         "User-Agent": "agentao-client/1.0"
     }
     
-    response = requests.post(endpoint, json=payload, headers=headers)
-    response.raise_for_status()
-    
-    return response
+    requests.post(endpoint, json=payload, headers=headers)
 
 def record_miner_submission(
     question_id: str,
@@ -102,7 +90,7 @@ def record_miner_submission(
     miner_hotkey: str,
     is_mainnet: bool,
     patch: str,
-    base_url: str = BASE_URL
+    base_url: str = BASE_DASHBOARD_URL
 ) -> requests.Response:
     endpoint = f"{base_url}/api/trpc/question.recordMinerSubmitted"
 
@@ -121,18 +109,12 @@ def record_miner_submission(
         "User-Agent": "agentao-client/1.0"
     }
 
-    response = requests.post(endpoint, json=payload, headers=headers)
-    response.raise_for_status()
-    
-    return response
+    requests.post(endpoint, json=payload, headers=headers)
 
 def validate_lifecycle_event(event_type: str, properties: Dict[str, Any]) -> bool:
     required_properties = lifecycle_events.get(event_type)
     
-    if required_properties is None or not all(prop in properties for prop in required_properties):
-        return False
-    
-    return True
+    return required_properties is not None and all(prop in properties for prop in required_properties)
 
 @dataclass
 class LogContext:
