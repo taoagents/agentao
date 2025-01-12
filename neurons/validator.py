@@ -44,17 +44,6 @@ from agentao.validator.graders.trueskill_grader import TrueSkillGrader
 from neurons.constants import LLM_EVAL_MULT, PROCESS_TIME_MULT, ValidatorDefaults
 from neurons.constants import UPLOAD_ISSUE_ENDPOINT
 
-
-class ValidatorDefaults:
-    CODINGTASK_TIMEOUT_MINS = 30.
-    MODEL = "gpt4o"
-    INGESTION_HEURISTICS = IngestionHeuristics(
-        min_files_to_consider_dir_for_problems=3,
-        min_file_content_len=50,
-    )
-
-MAX_MINERS_PER_PROBLEM: Final[int] = 10
-
 class Validator(BaseValidatorNeuron):
     """
     Your validator neuron class. You should use this class to define your validator's behavior. In particular, you should replace the forward function with your own logic.
