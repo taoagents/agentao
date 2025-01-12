@@ -1,4 +1,5 @@
 import os
+import random
 from statistics import mean
 from textwrap import dedent
 from typing import Final, List
@@ -133,6 +134,10 @@ def _grade_miner_solution(miner_submission: MinerSubmission, logger: Logger) -> 
 
     return miner_output_score
 
+
+class MockFloatGrader(FloatGrader):
+    def grade(self, submissions: List[MinerSubmission]) -> List[float]:
+        return [random.uniform(0, 1) for _ in submissions]
 
 if __name__ == "__main__":
     sample_diff = IssueSolution(

@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List, Final, Dict
 
 OPENAI_MODELS: Final[List[str]] = [
@@ -34,6 +35,8 @@ SUPPORTED_VALIDATOR_MODELS: Final[List[str]] = OPENAI_MODELS
 SENTINEL_FLOAT_FAILURE_VALUE: Final[float] = -1.
 SENTINEL_INT_FAILURE_VALUE: Final[int] = -1
 SENTINEL_STRING_FAILURE_VALUE: Final[str] = "N/A"
+
+SAMPLE_GENERATED_PROBLEMS_FILE: Final[Path] = Path("tests/sample_generated_problems.json")
 
 PRICING_DATA_PER_MILLION_TOKENS: Final[Dict[str, Dict[str, float]]] = {
     "gpt-4o": {
