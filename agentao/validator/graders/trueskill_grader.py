@@ -52,6 +52,7 @@ class TrueSkillGrader(GraderInterface):
             json.dump({k: [v.mu, v.sigma] for k, v in self.ratings.items()}, f)
 
     def grade(self, submissions: List[MinerSubmission]) -> List[float]:
+        self.logger.info(f"Grading {len(submissions)} miners")
         # Initialize any new miners
         for submission in submissions:
             if submission.miner_hotkey not in self.ratings:
