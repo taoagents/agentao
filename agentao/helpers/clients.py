@@ -185,7 +185,6 @@ class AgentaoHandler(logging.Handler):
                 if additional_props:
                     properties.update(additional_props)
 
-            print(f"Properties: {properties}")
             formatted_properties = {
                 "description": record.message,
                 **self._context.to_dict(),
