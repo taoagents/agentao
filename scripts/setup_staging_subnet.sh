@@ -12,7 +12,7 @@ echo "y" | btcli config set --subtensor.network "$chain_address" --wallet.path "
 # - (owner, default)
 # - (miner, default)
 # - (validator, default)
-wallet_names=("owner" "miner" "validator")
+wallet_names=("owner" "miner" "miner2" "validator")
 
 function create-wallet() {
   local wallet_name="$1"
@@ -37,13 +37,18 @@ done
 
 
 # Create subnet and owner
-btcli wallet faucet --wallet.name owner --max-successes 5 --no_prompt
+btcli wallet faucet --wallet.name owner --max-successes 6 --no_prompt
 btcli subnet create --wallet.name owner --no_prompt
 
 # Initialize miner
 miner_address="$(jq -r ".ss58Address" ~/.bittensor/wallets/miner/coldkeypub.txt)"
 btcli wallet transfer --wallet.name owner --dest $miner_address --amount 1000 --no_prompt
 btcli subnet register --wallet.name miner --wallet.hotkey default --netuid 1 --no_prompt
+
+# Initialize miner2
+miner2_address="$(jq -r ".ss58Address" ~/.bittensor/wallets/miner2/coldkeypub.txt)"
+btcli wallet transfer --wallet.name owner --dest $miner2_address --amount 1000 --no_prompt
+btcli subnet register --wallet.name miner2 --wallet.hotkey default --netuid 1 --no_prompt
 
 # Initialize validator
 validator_address="$(jq -r ".ss58Address" ~/.bittensor/wallets/validator/coldkeypub.txt)"
