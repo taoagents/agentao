@@ -29,7 +29,7 @@ import yaml
 import agentao
 from agentao.base.miner import BaseMinerNeuron
 from agentao.helpers.classes import UnsolvedIssue
-from agentao.helpers.constants import MODEL_NAME_TO_ENVAR_NAME, SUPPORTED_MINER_MODELS
+from agentao.helpers.constants import MODEL_NAME_TO_ENVAR_NAME, SUPPORTED_MINER_MODELS, EXAMPLE_PATCH
 from agentao.helpers.helpers import clone_repo
 from agentao.miner.generate_solution import generate_code_patch
 from agentao.repo_environment import SUPPORTED_REPOS, REPO_TO_ENVIRONMENT_INFO
@@ -125,7 +125,8 @@ class Miner(BaseMinerNeuron):
                 temp_env_file.flush()
 
                 if self.use_mock_responses:
-                    synapse.patch = "dummy patch"
+                    synapse.patch = EXAMPLE_PATCH
+                    self.logger.info(f"Hotkey {self.wallet.hotkey.ss58_address} submitting dummy patch")
                 else:
                     synapse.patch = generate_code_patch(
                         self.model_name,

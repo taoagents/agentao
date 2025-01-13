@@ -79,8 +79,6 @@ class Validator(BaseValidatorNeuron):
         self.miner_request_timeout_mins = miner_request_timeout
         self.grader = TrueSkillGrader(logger=self.logger)
 
-        
-
     async def calculate_rewards(
         self,
         repo: str,
@@ -220,7 +218,7 @@ class Validator(BaseValidatorNeuron):
                 self.logger.info(f"Received responses from miners for task {problem_uuid}", extra=asdict(LogContext(
                     log_type="lifecycle",
                     event_type="miner_submitted",
-                    additional_properties={"miner_hotkey": r.axon.hotkey, "question_id": problem_uuid, "patch": r.patch}
+                    additional_properties={"miner_hotkey": r.axon.hotkey, "question_id": problem_uuid, "patch": r.patch, "response_time": r.dendrite.process_time}
                 )))
 
         working_miner_uids: List[int] = []
@@ -248,6 +246,7 @@ class Validator(BaseValidatorNeuron):
 
         self.logger.info(f"Running task-specific handlers for {problem_uuid}")
         await self.handle_synthetic_patch_response(
+            problem_uuid,
             repo,
             problem,
             finished_responses, 
@@ -258,6 +257,7 @@ class Validator(BaseValidatorNeuron):
 
     async def handle_synthetic_patch_response(
         self,
+        problem_uuid: str,
         repo: str,
         problem: GeneratedProblemStatement,
         finished_responses: List[IssueSolution],
@@ -285,6 +285,13 @@ class Validator(BaseValidatorNeuron):
             working_miner_uids,
             TaskType.LABELLED_ISSUE
         )
+
+        for miner_hotkey, grade in zip(miner_hotkeys, rewards_list):
+            self.logger.info(f"Graded miner {miner_hotkey} with score of {grade} for question {problem_uuid}", extra=asdict(LogContext(
+                log_type="lifecycle",
+                event_type="solution_selected",
+                additional_properties={"question_id": problem_uuid, "grade": grade, "miner_hotkey": miner_hotkey}
+            )))
 
         try:
             await self.upload_solution(

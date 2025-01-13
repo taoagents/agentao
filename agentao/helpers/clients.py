@@ -14,7 +14,7 @@ load_dotenv()
 
 lifecycle_events = {
     "question_generated": ["question_id", "question_text"],
-    "miner_submitted": ["question_id", "miner_hotkey", "patch"],
+    "miner_submitted": ["question_id", "miner_hotkey", "patch", "response_time"],
     "solution_selected": ["question_id", "grade", "miner_hotkey"]
 }
 
@@ -90,6 +90,7 @@ def record_miner_submission(
     miner_hotkey: str,
     is_mainnet: bool,
     patch: str,
+    response_time: datetime,
     base_url: str = BASE_DASHBOARD_URL
 ) -> requests.Response:
     try:
@@ -101,7 +102,7 @@ def record_miner_submission(
                 "miner_hotkey": miner_hotkey,
                 "submitting_hotkey": submitting_hotkey,
                 "is_mainnet": is_mainnet,
-                "patch": patch
+                "patch": patch,
             }
         }
 
@@ -235,7 +236,8 @@ class AgentaoHandler(logging.Handler):
                         submitting_hotkey=self._context.actor_id,
                         miner_hotkey=formatted_properties.get("miner_hotkey"),
                         is_mainnet=self._context.is_mainnet,
-                        patch=formatted_properties.get("patch")
+                        patch=formatted_properties.get("patch"),
+                        response_time=formatted_properties.get("response_time")
                     )
                 
                 elif event_type == "solution_selected":
