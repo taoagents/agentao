@@ -68,7 +68,6 @@ class TrueSkillGrader(GraderInterface):
                 self.update_ratings(submissions, float_scores)
 
             self.num_runs += 1
-
             for index, submission in enumerate(submissions):
                 float_grade_assigned = float_scores[index]
 
@@ -77,6 +76,7 @@ class TrueSkillGrader(GraderInterface):
                     event_type="solution_selected",
                     additional_properties={"question_id": submission.problem.problem_uuid, "grade": float_grade_assigned, "miner_hotkey": submission.miner_hotkey}
                 )))
+
 
         ratings = []
         mean_score = np.mean([r.mu - 3*r.sigma for r in self.ratings.values()])
