@@ -192,15 +192,13 @@ class Validator(BaseValidatorNeuron):
         )
         problem: GeneratedProblemStatement = problems[0]
 
-        problem_uuid = str(uuid.uuid4())
-        
         self.logger.info(f"Problem statement is: {problem.problem_statement[:50]}...", extra=asdict(LogContext(
             log_type="lifecycle",
             event_type="question_generated",
-            additional_properties={"question_text": problem.problem_statement, "question_id": problem_uuid}
+            additional_properties={"question_text": problem.problem_statement, "question_id": problem.problem_uuid}
         )))
         
-        self.logger.info(f"Sending task {problem_uuid} ({problem.problem_statement[:50]}) to miners, ...")
+        self.logger.info(f"Sending task {problem.problem_uuid} ({problem.problem_statement[:50]}) to miners, ...")
         responses: List[CodingTask] = await self.dendrite(
             axons=axons,
             synapse=CodingTask(
@@ -215,10 +213,10 @@ class Validator(BaseValidatorNeuron):
         for r in responses:
             # Only record the submission if there is actually a patch
             if r.patch not in [None, ""]:
-                self.logger.info(f"Received responses from miners for task {problem_uuid}", extra=asdict(LogContext(
+                self.logger.info(f"Received responses from miners for task {problem.problem_uuid}", extra=asdict(LogContext(
                     log_type="lifecycle",
                     event_type="miner_submitted",
-                    additional_properties={"miner_hotkey": r.axon.hotkey, "question_id": problem_uuid, "patch": r.patch, "response_time": r.dendrite.process_time}
+                    additional_properties={"miner_hotkey": r.axon.hotkey, "question_id": problem.problem_uuid, "patch": r.patch, "response_time": r.dendrite.process_time}
                 )))
 
         working_miner_uids: List[int] = []
@@ -244,9 +242,8 @@ class Validator(BaseValidatorNeuron):
         
         # TODO: Add punishment for miners who did not respond
 
-        self.logger.info(f"Running task-specific handlers for {problem_uuid}")
+        self.logger.info(f"Running task-specific handlers for {problem.problem_uuid}")
         await self.handle_synthetic_patch_response(
-            problem_uuid,
             repo,
             problem,
             finished_responses, 
@@ -257,7 +254,6 @@ class Validator(BaseValidatorNeuron):
 
     async def handle_synthetic_patch_response(
         self,
-        problem_uuid: str,
         repo: str,
         problem: GeneratedProblemStatement,
         finished_responses: List[IssueSolution],
@@ -285,13 +281,6 @@ class Validator(BaseValidatorNeuron):
             working_miner_uids,
             TaskType.LABELLED_ISSUE
         )
-
-        for miner_hotkey, grade in zip(miner_hotkeys, rewards_list):
-            self.logger.info(f"Graded miner {miner_hotkey} with score of {grade} for question {problem_uuid}", extra=asdict(LogContext(
-                log_type="lifecycle",
-                event_type="solution_selected",
-                additional_properties={"question_id": problem_uuid, "grade": grade, "miner_hotkey": miner_hotkey}
-            )))
 
         try:
             await self.upload_solution(
