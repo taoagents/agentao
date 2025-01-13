@@ -122,8 +122,8 @@ def validate_lifecycle_event(event_type: str, properties: Dict[str, Any]) -> boo
 
 @dataclass
 class LogContext:
-    log_type: str # internal or lifecycle
-    event_type: str # can be anything. this is the event id recorded. if this is a lifecycle log it must be one of question_generated, miner_submitted, or solution_selected
+    log_type: str = "internal" # internal or lifecycle
+    event_type: str = "" # can be anything. this is the event id recorded. if this is a lifecycle log it must be one of question_generated, miner_submitted, or solution_selected
     flush_posthog: bool = False
     additional_properties: Optional[Dict[Any, Any]] = None
 
