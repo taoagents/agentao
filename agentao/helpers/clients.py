@@ -26,6 +26,8 @@ class LogSessionContext:
     is_mainnet: bool
     log_version: int
 
+    forward_pass_id: Optional[str] = None
+
     def to_dict(self):
         return asdict(self)
 
@@ -103,6 +105,7 @@ def record_miner_submission(
                 "submitting_hotkey": submitting_hotkey,
                 "is_mainnet": is_mainnet,
                 "patch": patch,
+                "response_time": response_time.isoformat()
             }
         }
 
@@ -171,6 +174,12 @@ class AgentaoHandler(logging.Handler):
             except Exception as e:
                 print(f"Failed to initialize PostHog handler: {e}")
                 self._posthog_enabled = False
+    
+    def _add_forward_pass_context(self, forward_pass_id: str):
+        self._context.forward_pass_id = forward_pass_id
+
+    def _reset_forward_pass_context(self):
+        self._context.forward_pass_id = None
     
     def emit(self, record):
         if self._posthog_enabled == False:
@@ -275,6 +284,20 @@ def setup_logger(logger_name: str, log_session_context: LogSessionContext) -> Lo
     
     logger.addHandler(console_handler)
     logger.addHandler(AgentaoHandler(context=log_session_context))
+
+    # Two helper methods to allow us to set optional context during forward passes
+    def add_forward_pass_context(forward_pass_id: str):
+        for handler in logger.handlers:
+            if isinstance(handler, AgentaoHandler):
+                handler._add_forward_pass_context(forward_pass_id)
+    
+    def reset_forward_pass_context():
+        for handler in logger.handlers:
+            if isinstance(handler, AgentaoHandler):
+                handler._reset_forward_pass_context()
+
+    logger.add_forward_pass_context = add_forward_pass_context
+    logger.reset_forward_pass_context = reset_forward_pass_context
 
     return logger
 

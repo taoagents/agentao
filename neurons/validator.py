@@ -66,7 +66,7 @@ class Validator(BaseValidatorNeuron):
             actor_id=hotkey,
             actor_type="validator",
             is_mainnet=self.subtensor.network == "finney",
-            log_version=7,
+            log_version=8,
             session_id=''.join(random.choices(''.join(map(chr, range(33,127))), k=8))
         )
 
@@ -157,17 +157,15 @@ class Validator(BaseValidatorNeuron):
         """
         forward_pass_id = str(uuid.uuid4())
 
-        self.logger.debug("Starting forward pass...", extra=asdict(LogContext(
-            additional_properties={"forward_pass_id": forward_pass_id}
-        )))
+        self.logger.add_forward_pass_context(forward_pass_id)
+
+        self.logger.debug("Starting forward pass...")
 
         miner_uids = [
             uid for uid in range(len(self.metagraph.S))
             if check_uid_availability(self.metagraph, uid, self.config.neuron.vpermit_tao_limit)
         ]
-        self.logger.info(f"Found {len(miner_uids)} miner UIDs: {miner_uids}", extra=asdict(LogContext(
-            additional_properties={"forward_pass_id": forward_pass_id}
-        )))
+        self.logger.info(f"Found {len(miner_uids)} miner UIDs: {miner_uids}")
 
         if len(miner_uids) > ValidatorDefaults.MAX_MINERS_PER_PROBLEM:
             miner_uids = random.sample(miner_uids, ValidatorDefaults.MAX_MINERS_PER_PROBLEM)
@@ -176,29 +174,21 @@ class Validator(BaseValidatorNeuron):
             )
 
         if len(miner_uids) == 0:
-            self.logger.info("No miners available to query. Exiting forward pass...", extra=asdict(LogContext(
-                additional_properties={"forward_pass_id": forward_pass_id}
-            )))
+            self.logger.info("No miners available to query. Exiting forward pass...")
             return
 
         axons = [self.metagraph.axons[uid] for uid in miner_uids]
 
-        self.logger.info(f"Current step={self.step}...", extra=asdict(LogContext(
-            additional_properties={"forward_pass_id": forward_pass_id}
-        )))
+        self.logger.info(f"Current step={self.step}...")
 
         current_dir = Path.cwd()
         repo = random.choice(SUPPORTED_REPOS)
 
         author_name, repo_name = repo.split("/")
 
-        self.logger.info(f"Cloning repo {repo}...", extra=asdict(LogContext(
-            additional_properties={"forward_pass_id": forward_pass_id}
-        )))
+        self.logger.info(f"Cloning repo {repo}...")
         local_repo_dir = clone_repo(author_name, repo_name, current_dir.parent, logger=self.logger)
-        self.logger.info(f"Finished cloning repo {repo}", extra=asdict(LogContext(
-            additional_properties={"forward_pass_id": forward_pass_id}
-        )))
+        self.logger.info(f"Finished cloning repo {repo}")
 
         num_problems_to_gen = 1
         problems: List[GeneratedProblemStatement] = create_problem_statements(
@@ -211,10 +201,8 @@ class Validator(BaseValidatorNeuron):
             event_type="question_generated",
             additional_properties={"question_text": problem.problem_statement, "question_id": problem.problem_uuid, "forward_pass_id": forward_pass_id}
         )))
-        
-        self.logger.info(f"Sending task {problem.problem_uuid} ({problem.problem_statement[:50]}) to miners, ...", extra=asdict(LogContext(
-            additional_properties={"forward_pass_id": forward_pass_id, "question_id": problem.problem_uuid}
-        )))
+
+        self.logger.info(f"Sending task {problem.problem_uuid} ({problem.problem_statement[:50]}) to miners, ...")
 
         responses: List[CodingTask] = await self.dendrite(
             axons=axons,
@@ -240,39 +228,27 @@ class Validator(BaseValidatorNeuron):
         finished_responses: List[IssueSolution] = []
         process_times: List[float] = []
 
-        self.logger.info("Checking which received patches are valid...", extra=asdict(LogContext(
-            additional_properties={"forward_pass_id": forward_pass_id, "question_id": problem.problem_uuid}
-        )))
+        self.logger.info("Checking which received patches are valid...")
 
         for response in responses:
             if not response:
-                self.logger.info(f"Miner with hotkey {response.axon.hotkey} did not give a response", extra=asdict(LogContext(
-                    additional_properties={"forward_pass_id": forward_pass_id, "question_id": problem.problem_uuid}
-                )))
+                self.logger.info(f"Miner with hotkey {response.axon.hotkey} did not give a response")
             elif response.patch in [None, ""] or not response.axon or not response.axon.hotkey:
-                self.logger.info(f"Miner with hotkey {response.axon.hotkey} gave a response object but no patch", extra=asdict(LogContext(
-                    additional_properties={"forward_pass_id": forward_pass_id, "question_id": problem.problem_uuid}
-                )))
+                self.logger.info(f"Miner with hotkey {response.axon.hotkey} gave a response object but no patch")
             else:
-                self.logger.info(f"Miner with hotkey {response.axon.hotkey} gave a valid response/patch", extra=asdict(LogContext(
-                    additional_properties={"forward_pass_id": forward_pass_id, "question_id": problem.problem_uuid}
-                )))
+                self.logger.info(f"Miner with hotkey {response.axon.hotkey} gave a valid response/patch")
                 uid = next(uid for uid, axon in zip(miner_uids, axons) if axon.hotkey == response.axon.hotkey)
                 working_miner_uids.append(uid)
                 finished_responses.append(IssueSolution(response.patch))
                 process_times.append(response.dendrite.process_time)
 
         if len(working_miner_uids) == 0:
-            self.logger.info("No miners responded. Exiting forward pass...", extra=asdict(LogContext(
-                additional_properties={"forward_pass_id": forward_pass_id, "question_id": problem.problem_uuid}
-            )))
+            self.logger.info("No miners responded. Exiting forward pass...")
             return
         
         # TODO: Add punishment for miners who did not respond
 
-        self.logger.info(f"Running task-specific handlers for {problem.problem_uuid}", extra=asdict(LogContext(
-            additional_properties={"forward_pass_id": forward_pass_id, "question_id": problem.problem_uuid}
-        )))
+        self.logger.info(f"Running task-specific handlers for {problem.problem_uuid}")
 
         await self.handle_synthetic_patch_response(
             repo,
@@ -282,6 +258,8 @@ class Validator(BaseValidatorNeuron):
             working_miner_uids,
             forward_pass_id
         )
+
+        self.logger.reset_forward_pass_context()
 
 
     async def handle_synthetic_patch_response(
@@ -303,14 +281,10 @@ class Validator(BaseValidatorNeuron):
                 process_times,
             )
         except Exception:
-            self.logger.exception("Error calculating rewards", extra=asdict(LogContext(
-                additional_properties={"forward_pass_id": forward_pass_id, "question_id": problem.problem_uuid}
-            )))
+            self.logger.exception("Error calculating rewards")
             return
 
-        self.logger.info(f"Rewards: {rewards_list}", extra=asdict(LogContext(
-            additional_properties={"forward_pass_id": forward_pass_id, "question_id": problem.problem_uuid}
-        )))
+        self.logger.info(f"Rewards: {rewards_list}")
 
         # reward the miners who succeeded
         self.update_scores(
@@ -327,9 +301,7 @@ class Validator(BaseValidatorNeuron):
                 miner_hotkeys,
             )
         except Exception:
-            self.logger.exception("Error uploading solution", extra=asdict(LogContext(
-            additional_properties={"forward_pass_id": forward_pass_id, "question_id": problem.problem_uuid}
-        )))
+            self.logger.exception("Error uploading solution")
 
 
 def parse_args() -> argparse.Namespace:
