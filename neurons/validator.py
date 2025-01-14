@@ -31,7 +31,7 @@ from aiohttp import BasicAuth, ClientSession
 
 from agentao.base.validator import BaseValidatorNeuron, TaskType
 from agentao.helpers.classes import GeneratedProblemStatement, IngestionHeuristics, \
-    IssueSolution
+    IssueSolution, convert_to_obj
 from agentao.helpers.clients import LogSessionContext, setup_logger, LogContext
 from agentao.helpers.constants import SUPPORTED_VALIDATOR_MODELS
 from agentao.helpers.helpers import clone_repo, exponential_decay
@@ -199,7 +199,10 @@ class Validator(BaseValidatorNeuron):
         self.logger.info(f"Problem statement is: {problem.problem_statement[:50]}...", extra=asdict(LogContext(
             log_type="lifecycle",
             event_type="question_generated",
-            additional_properties={"question_text": problem.problem_statement, "question_id": problem_uuid}
+            additional_properties={
+                "question_id": problem_uuid,
+                **convert_to_obj(problem),
+            }
         )))
         
         self.logger.info(f"Sending task {problem_uuid} ({problem.problem_statement[:50]}) to miners, ...")
@@ -220,7 +223,11 @@ class Validator(BaseValidatorNeuron):
                 self.logger.info(f"Received responses from miners for task {problem_uuid}", extra=asdict(LogContext(
                     log_type="lifecycle",
                     event_type="miner_submitted",
-                    additional_properties={"miner_hotkey": r.axon.hotkey, "question_id": problem_uuid, "patch": r.patch}
+                    additional_properties={
+                        "miner_hotkey": r.axon.hotkey,
+                        "question_id": problem_uuid,
+                        "patch": r.patch
+                    }
                 )))
 
         working_miner_uids: List[int] = []
