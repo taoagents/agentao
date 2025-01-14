@@ -4,6 +4,7 @@ from pathlib import Path
 from textwrap import dedent
 from typing import List, Final, Union, Callable
 import random
+import uuid
 
 import openai
 from jinja2 import Template
@@ -152,8 +153,12 @@ def generate_problem_statements(
     prompt_tokens, completion_tokens = completion.usage.prompt_tokens, completion.usage.completion_tokens
     cost = calculate_price(model, prompt_tokens, completion_tokens)
 
+    # Generate a UUID for each problem statement
+    problem_uuid = str(uuid.uuid4())
+
     return [
         GeneratedProblemStatement(
+            problem_uuid=problem_uuid,
             prompt=prompt_text,
             model=model,
             problem_statement=statement.problem_statement,

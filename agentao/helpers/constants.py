@@ -122,4 +122,16 @@ PRICING_DATA_PER_MILLION_TOKENS: Final[Dict[str, Dict[str, float]]] = {
     }
 }
 
-BASE_DASHBOARD_URL: Final[str] = "https://agentao-dashboard.vercel.app"
+BASE_DASHBOARD_URL: Final[str] = "https://lively-excited-bull.ngrok-free.app"
+# "https://agentao-dashboard.vercel.app"
+
+EXAMPLE_PATCH =  """
+diff --git a/patches/dummy.py b/patches/dummy.py
+new file mode 100644
+index 00000000..55b8c677
+--- /dev/null
++++ b/doc/tools/convert_docs.py
+@@ -0,0 +1,190 @@
++def main():
++    print(f"Dummy Patch")
+"""

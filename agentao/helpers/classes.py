@@ -98,6 +98,7 @@ class ValidatorModelStats:
 
 @dataclass
 class GeneratedProblemStatement:
+    problem_uuid: str
     prompt: str
     model: str
     problem_statement: str

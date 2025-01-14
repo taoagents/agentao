@@ -8,6 +8,9 @@ import json
 from agentao.validator.graders.abstract_grader import GraderInterface, MinerSubmission
 from agentao.validator.graders.float_grader import FloatGrader
 
+from dataclasses import asdict
+from agentao.helpers.clients import LogContext
+
 class TrueSkillGrader(GraderInterface):
     """
     A grader that uses the TrueSkill rating system to grade miners. The 
@@ -65,6 +68,15 @@ class TrueSkillGrader(GraderInterface):
                 self.update_ratings(submissions, float_scores)
 
             self.num_runs += 1
+            for index, submission in enumerate(submissions):
+                float_grade_assigned = float_scores[index]
+
+                self.logger.info(f"Graded miner {submission.miner_hotkey} with score of {float_grade_assigned} for question {submission.problem.problem_uuid}", extra=asdict(LogContext(
+                    log_type="lifecycle",
+                    event_type="solution_selected",
+                    additional_properties={"question_id": submission.problem.problem_uuid, "grade": float_grade_assigned, "miner_hotkey": submission.miner_hotkey}
+                )))
+
 
         ratings = []
         mean_score = np.mean([r.mu - 3*r.sigma for r in self.ratings.values()])

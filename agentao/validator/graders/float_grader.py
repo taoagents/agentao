@@ -158,6 +158,7 @@ if __name__ == "__main__":
     scores = grader.grade([MinerSubmission(
             repo="mwaskmom/seaborn",
             problem=GeneratedProblemStatement(
+                problem_uuid="some_uuid",
                 prompt="",
                 problem_statement="Process data with o(n) complexity. Create a loop to do this",
                 dynamic_checklist=["grade this 0", "grade this 1", "grade this 0"],

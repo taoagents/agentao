@@ -66,7 +66,7 @@ class Validator(BaseValidatorNeuron):
             actor_id=hotkey,
             actor_type="validator",
             is_mainnet=self.subtensor.network == "finney",
-            log_version=7,
+            log_version=8,
             session_id=''.join(random.choices(''.join(map(chr, range(33,127))), k=8))
         )
 
@@ -78,8 +78,6 @@ class Validator(BaseValidatorNeuron):
         self.model_name = model
         self.miner_request_timeout_mins = miner_request_timeout
         self.grader = TrueSkillGrader(logger=self.logger)
-
-        
 
     async def calculate_rewards(
         self,
@@ -157,6 +155,10 @@ class Validator(BaseValidatorNeuron):
         - Rewarding the miners
         - Updating the scores
         """
+        forward_pass_id = str(uuid.uuid4())
+
+        self.logger.add_forward_pass_context(forward_pass_id)
+
         self.logger.debug("Starting forward pass...")
 
         miner_uids = [
@@ -194,15 +196,14 @@ class Validator(BaseValidatorNeuron):
         )
         problem: GeneratedProblemStatement = problems[0]
 
-        problem_uuid = str(uuid.uuid4())
-        
         self.logger.info(f"Problem statement is: {problem.problem_statement[:50]}...", extra=asdict(LogContext(
             log_type="lifecycle",
             event_type="question_generated",
-            additional_properties={"question_text": problem.problem_statement, "question_id": problem_uuid}
+            additional_properties={"question_text": problem.problem_statement, "question_id": problem.problem_uuid, "forward_pass_id": forward_pass_id}
         )))
-        
-        self.logger.info(f"Sending task {problem_uuid} ({problem.problem_statement[:50]}) to miners, ...")
+
+        self.logger.info(f"Sending task {problem.problem_uuid} ({problem.problem_statement[:50]}) to miners, ...")
+
         responses: List[CodingTask] = await self.dendrite(
             axons=axons,
             synapse=CodingTask(
@@ -217,10 +218,10 @@ class Validator(BaseValidatorNeuron):
         for r in responses:
             # Only record the submission if there is actually a patch
             if r.patch not in [None, ""]:
-                self.logger.info(f"Received responses from miners for task {problem_uuid}", extra=asdict(LogContext(
+                self.logger.info(f"Received responses from miners for task {problem.problem_uuid}", extra=asdict(LogContext(
                     log_type="lifecycle",
                     event_type="miner_submitted",
-                    additional_properties={"miner_hotkey": r.axon.hotkey, "question_id": problem_uuid, "patch": r.patch}
+                    additional_properties={"miner_hotkey": r.axon.hotkey, "question_id": problem.problem_uuid, "patch": r.patch, "response_time": r.dendrite.process_time, "forward_pass_id": forward_pass_id}
                 )))
 
         working_miner_uids: List[int] = []
@@ -228,6 +229,7 @@ class Validator(BaseValidatorNeuron):
         process_times: List[float] = []
 
         self.logger.info("Checking which received patches are valid...")
+
         for response in responses:
             if not response:
                 self.logger.info(f"Miner with hotkey {response.axon.hotkey} did not give a response")
@@ -246,14 +248,18 @@ class Validator(BaseValidatorNeuron):
         
         # TODO: Add punishment for miners who did not respond
 
-        self.logger.info(f"Running task-specific handlers for {problem_uuid}")
+        self.logger.info(f"Running task-specific handlers for {problem.problem_uuid}")
+
         await self.handle_synthetic_patch_response(
             repo,
             problem,
             finished_responses, 
             process_times,
             working_miner_uids,
+            forward_pass_id
         )
+
+        self.logger.reset_forward_pass_context()
 
 
     async def handle_synthetic_patch_response(
@@ -263,6 +269,7 @@ class Validator(BaseValidatorNeuron):
         finished_responses: List[IssueSolution],
         process_times: List[float], 
         working_miner_uids: List[int], 
+        forward_pass_id: str
     ) -> None:
         miner_hotkeys = [self.metagraph.hotkeys[uid] for uid in working_miner_uids]
         try:
