@@ -56,7 +56,7 @@ def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> str:
         )
 
         if result.returncode != 0:
-            print(f"Failed to apply patch with error: {result.stderr}")
+            logger.info(f"Failed to apply patch with error: {result.stderr}")
             return ""
 
         processed_patch = remove_comments(patch)

@@ -93,9 +93,9 @@ def record_miner_submission(
     miner_hotkey: str,
     is_mainnet: bool,
     patch: str,
-    response_time: datetime,
+    response_time: float,
     base_url: str = BASE_DASHBOARD_URL
-) -> requests.Response:
+) -> None:
     try:
         endpoint = f"{base_url}/api/trpc/question.recordMinerSubmitted"
 
@@ -106,7 +106,7 @@ def record_miner_submission(
                 "submitting_hotkey": submitting_hotkey,
                 "is_mainnet": is_mainnet,
                 "patch": patch,
-                "response_time": response_time.isoformat()
+                "response_time": response_time
             }
         }
 
@@ -247,7 +247,7 @@ class AgentaoHandler(logging.Handler):
                         miner_hotkey=formatted_properties.get("miner_hotkey"),
                         is_mainnet=self._context.is_mainnet,
                         patch=formatted_properties.get("patch"),
-                        response_time=formatted_properties.get("response_time")
+                        response_time=float(formatted_properties.get("response_time"))
                     )
                 
                 elif event_type == "solution_selected":
