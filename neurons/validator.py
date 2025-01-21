@@ -66,7 +66,7 @@ class Validator(BaseValidatorNeuron):
             actor_id=hotkey,
             actor_type="validator",
             is_mainnet=self.subtensor.network == "finney",
-            log_version=9,
+            log_version=10,
             session_id=''.join(random.choices(''.join(map(chr, range(33,127))), k=8)),
             network=self.subtensor.network
         )
