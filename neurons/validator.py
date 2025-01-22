@@ -105,7 +105,21 @@ class Validator(BaseValidatorNeuron):
             for t in process_times
         ])
 
-        return LLM_EVAL_MULT*llm_evals + PROCESS_TIME_MULT*response_times
+        final_scores = []
+        for llm_eval, response_time in zip(llm_evals, response_times):
+            if llm_eval == 0.0:
+                final_scores.append(ValidatorDefaults.NO_RESPONSE_MIN)
+            else:
+                final_scores.append(LLM_EVAL_MULT*llm_eval + PROCESS_TIME_MULT*response_time)
+
+        # Check if for each solution, whether the patch is the same as another miner submitted patch.
+        # If so, then the score is 0.0
+        for i, solution in enumerate(issue_solutions):
+            for j, other_solution in enumerate(issue_solutions):
+                if i != j and solution.patch == other_solution.patch:
+                    final_scores[i] = 0.0
+
+        return np.array(final_scores)
     
     # TODO: Add more fields once components of scoring are named
     async def upload_solution(
@@ -247,7 +261,13 @@ class Validator(BaseValidatorNeuron):
             self.logger.info("No miners responded. Exiting forward pass...")
             return
         
-        # TODO: Add punishment for miners who did not respond
+        # Add punishment for miners who did not respond
+        bad_miner_uids = [uid for uid in miner_uids if uid not in working_miner_uids]
+        self.update_scores(
+            np.array([ValidatorDefaults.NO_RESPONSE_MIN] * len(bad_miner_uids)),
+            bad_miner_uids,
+            TaskType.LABELLED_ISSUE
+        )
 
         self.logger.info(f"Running task-specific handlers for {problem.problem_uuid}")
 
