@@ -117,7 +117,7 @@ class Validator(BaseValidatorNeuron):
         for i, solution in enumerate(issue_solutions):
             for j, other_solution in enumerate(issue_solutions):
                 if i != j and solution.patch == other_solution.patch:
-                    final_scores[i] = 0.0
+                    final_scores[i] = ValidatorDefaults.NO_RESPONSE_MIN
 
         return np.array(final_scores)
     
