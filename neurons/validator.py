@@ -105,7 +105,21 @@ class Validator(BaseValidatorNeuron):
             for t in process_times
         ])
 
-        return LLM_EVAL_MULT*llm_evals + PROCESS_TIME_MULT*response_times
+        final_scores = []
+        for llm_eval, response_time in zip(llm_evals, response_times):
+            if llm_eval == 0.0:
+                final_scores.append(ValidatorDefaults.NO_RESPONSE_MIN)
+            else:
+                final_scores.append(LLM_EVAL_MULT*llm_eval + PROCESS_TIME_MULT*response_time)
+
+        # Check if for each solution, whether the patch is the same as another miner submitted patch.
+        # If so, then the score is 0.0
+        for i, solution in enumerate(issue_solutions):
+            for j, other_solution in enumerate(issue_solutions):
+                if i != j and solution.patch == other_solution.patch:
+                    final_scores[i] = ValidatorDefaults.NO_RESPONSE_MIN
+
+        return np.array(final_scores)
     
     # TODO: Add more fields once components of scoring are named
     async def upload_solution(
@@ -144,8 +158,8 @@ class Validator(BaseValidatorNeuron):
                 ) as response:
                     response.raise_for_status()
                     _result = await response.json()
-        except Exception:
-            self.logger.exception("Error uploading closed issue")
+        except Exception as e:
+            self.logger.exception(f"Error uploading closed issue: {e}")
 
     async def forward(self):
         """
@@ -247,7 +261,13 @@ class Validator(BaseValidatorNeuron):
             self.logger.info("No miners responded. Exiting forward pass...")
             return
         
-        # TODO: Add punishment for miners who did not respond
+        # Add punishment for miners who did not respond
+        bad_miner_uids = [uid for uid in miner_uids if uid not in working_miner_uids]
+        self.update_scores(
+            np.array([ValidatorDefaults.NO_RESPONSE_MIN] * len(bad_miner_uids)),
+            bad_miner_uids,
+            TaskType.LABELLED_ISSUE
+        )
 
         self.logger.info(f"Running task-specific handlers for {problem.problem_uuid}")
 
@@ -281,8 +301,8 @@ class Validator(BaseValidatorNeuron):
                 miner_hotkeys,
                 process_times,
             )
-        except Exception:
-            self.logger.exception("Error calculating rewards")
+        except Exception as e:
+            self.logger.exception(f"Error calculating rewards: {e}")
             return
 
         self.logger.info(f"Rewards: {rewards_list}")
@@ -301,8 +321,8 @@ class Validator(BaseValidatorNeuron):
                 rewards_list.tolist(),
                 miner_hotkeys,
             )
-        except Exception:
-            self.logger.exception("Error uploading solution")
+        except Exception as e:
+            self.logger.exception(f"Error uploading solution: {e}")
 
 
 def parse_args() -> argparse.Namespace:

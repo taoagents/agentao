@@ -59,28 +59,33 @@ class TrueSkillGrader(GraderInterface):
             if submission.miner_hotkey not in self.ratings:
                 self.ratings[submission.miner_hotkey] = self.env.create_rating()
 
+        # Run float scores
+        float_scores = self.float_grader.grade(submissions)
+        for index, submission in enumerate(submissions):
+            float_grade_assigned = float_scores[index]
+
+            self.logger.info(f"Graded miner {submission.miner_hotkey} with score of {float_grade_assigned} for question {submission.problem.problem_uuid}", extra=asdict(LogContext(
+                log_type="lifecycle",
+                event_type="solution_selected",
+                additional_properties={"question_id": submission.problem.problem_uuid, "grade": float_grade_assigned, "miner_hotkey": submission.miner_hotkey}
+            )))
+
         # We run the rating system thrice for steadier results when we first
         # initialize the ratings
         if len(submissions) > 1:
             num_runs = 1 if self.num_runs > 5 else 3
-            float_scores = self.float_grader.grade(submissions)
             for _ in range(num_runs):
                 self.update_ratings(submissions, float_scores)
 
             self.num_runs += 1
-            for index, submission in enumerate(submissions):
-                float_grade_assigned = float_scores[index]
 
-                self.logger.info(f"Graded miner {submission.miner_hotkey} with score of {float_grade_assigned} for question {submission.problem.problem_uuid}", extra=asdict(LogContext(
-                    log_type="lifecycle",
-                    event_type="solution_selected",
-                    additional_properties={"question_id": submission.problem.problem_uuid, "grade": float_grade_assigned, "miner_hotkey": submission.miner_hotkey}
-                )))
-
-
+        # Calculate normalized ratings
         ratings = []
         mean_score = np.mean([r.mu - 3*r.sigma for r in self.ratings.values()])
-        for submission in submissions:
+        for index, submission in enumerate(submissions):
+            if float_scores[index] == 0.0:
+                ratings.append(0.0)
+                continue
             miner_rating = self.ratings[submission.miner_hotkey]
             miner_rating = miner_rating.mu - 3 * miner_rating.sigma
             ratings.append(1 / (1 + np.exp(-self.apha * (miner_rating - mean_score))))

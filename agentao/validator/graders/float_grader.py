@@ -66,7 +66,10 @@ class FloatGrader(GraderInterface):
 
         for submission in submissions:
             miner_output_score = _grade_miner_solution(submission, self.logger)
-            overall_scores.append(_compute_overall_score(miner_output_score))
+            if miner_output_score == EMPTY_PATCH_SCORE:
+                overall_scores.append(0.0)
+            else:
+                overall_scores.append(_compute_overall_score(miner_output_score))
 
         return overall_scores
 
