@@ -158,8 +158,8 @@ class Validator(BaseValidatorNeuron):
                 ) as response:
                     response.raise_for_status()
                     _result = await response.json()
-        except Exception:
-            self.logger.exception("Error uploading closed issue")
+        except Exception as e:
+            self.logger.exception(f"Error uploading closed issue: {e}")
 
     async def forward(self):
         """
@@ -294,6 +294,7 @@ class Validator(BaseValidatorNeuron):
     ) -> None:
         miner_hotkeys = [self.metagraph.hotkeys[uid] for uid in working_miner_uids]
         try:
+            raise NotImplementedError("Implement this function")
             rewards_list = await self.calculate_rewards(
                 repo,
                 problem,
@@ -301,8 +302,8 @@ class Validator(BaseValidatorNeuron):
                 miner_hotkeys,
                 process_times,
             )
-        except Exception:
-            self.logger.exception("Error calculating rewards")
+        except Exception as e:
+            self.logger.exception(f"Error calculating rewards: {e}")
             return
 
         self.logger.info(f"Rewards: {rewards_list}")
@@ -321,8 +322,8 @@ class Validator(BaseValidatorNeuron):
                 rewards_list.tolist(),
                 miner_hotkeys,
             )
-        except Exception:
-            self.logger.exception("Error uploading solution")
+        except Exception as e:
+            self.logger.exception(f"Error uploading solution: {e}")
 
 
 def parse_args() -> argparse.Namespace:
