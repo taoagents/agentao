@@ -294,7 +294,6 @@ class Validator(BaseValidatorNeuron):
     ) -> None:
         miner_hotkeys = [self.metagraph.hotkeys[uid] for uid in working_miner_uids]
         try:
-            raise NotImplementedError("Implement this function")
             rewards_list = await self.calculate_rewards(
                 repo,
                 problem,
