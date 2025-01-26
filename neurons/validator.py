@@ -14,6 +14,9 @@
 # DEALINGS IN THE SOFTWARE.
 
 from dotenv import load_dotenv
+
+from agentao.utils.load_sample_generated_problems import load_sample_problems
+
 load_dotenv()
 
 import argparse
@@ -30,8 +33,7 @@ import numpy as np
 from aiohttp import BasicAuth, ClientSession
 
 from agentao.base.validator import BaseValidatorNeuron, TaskType
-from agentao.helpers.classes import GeneratedProblemStatement, IngestionHeuristics, \
-    IssueSolution
+from agentao.helpers.classes import GeneratedProblemStatement, IssueSolution
 from agentao.helpers.clients import LogSessionContext, setup_logger, LogContext
 from agentao.helpers.constants import SUPPORTED_VALIDATOR_MODELS
 from agentao.helpers.helpers import clone_repo, exponential_decay
@@ -40,7 +42,7 @@ from agentao.repo_environment import SUPPORTED_REPOS
 from agentao.utils.uids import check_uid_availability
 from agentao.validator.generate_problem import create_problem_statements
 from agentao.validator.graders.abstract_grader import MinerSubmission
-from agentao.validator.graders.trueskill_grader import TrueSkillGrader
+from agentao.validator.graders.trueskill_grader import TrueSkillGrader, MockTrueSkillGrader
 from neurons.constants import LLM_EVAL_MULT, PROCESS_TIME_MULT, ValidatorDefaults
 from neurons.constants import UPLOAD_ISSUE_ENDPOINT
 
@@ -58,6 +60,7 @@ class Validator(BaseValidatorNeuron):
         config=None,
         model: str = ValidatorDefaults.MODEL,
         miner_request_timeout: int = ValidatorDefaults.CODINGTASK_TIMEOUT_MINS,
+        use_mock_responses: bool = False,
     ):
         super(Validator, self).__init__(config=config)
         # Setup logging
@@ -66,7 +69,7 @@ class Validator(BaseValidatorNeuron):
             actor_id=hotkey,
             actor_type="validator",
             is_mainnet=self.subtensor.network == "finney",
-            log_version=11,
+            log_version=12,
             session_id=''.join(random.choices(''.join(map(chr, range(33,127))), k=8)),
             network=self.subtensor.network
         )
@@ -78,7 +81,12 @@ class Validator(BaseValidatorNeuron):
 
         self.model_name = model
         self.miner_request_timeout_mins = miner_request_timeout
-        self.grader = TrueSkillGrader(logger=self.logger)
+        self.use_mock_responses = use_mock_responses
+
+        if self.use_mock_responses:
+            self.grader = MockTrueSkillGrader(logger=self.logger)
+        else:
+            self.grader = TrueSkillGrader(logger=self.logger)
 
     async def calculate_rewards(
         self,
@@ -206,9 +214,13 @@ class Validator(BaseValidatorNeuron):
         self.logger.info(f"Finished cloning repo {repo}")
 
         num_problems_to_gen = 1
-        problems: List[GeneratedProblemStatement] = create_problem_statements(
-            self.model_name, repo, local_repo_dir, num_problems_to_gen, ValidatorDefaults.INGESTION_HEURISTICS, self.logger
-        )
+        if self.use_mock_responses:
+            problems: List[GeneratedProblemStatement] = [random.choice(load_sample_problems())]
+        else:
+            problems: List[GeneratedProblemStatement] = create_problem_statements(
+                self.model_name, repo, local_repo_dir, num_problems_to_gen, ValidatorDefaults.INGESTION_HEURISTICS, self.logger
+            )
+
         problem: GeneratedProblemStatement = problems[0]
 
         self.logger.info(f"Problem statement is: {problem.problem_statement[:50]}...", extra=asdict(LogContext(
@@ -251,7 +263,7 @@ class Validator(BaseValidatorNeuron):
             elif response.patch in [None, ""] or not response.axon or not response.axon.hotkey:
                 self.logger.info(f"Miner with hotkey {response.axon.hotkey} gave a response object but no patch")
             else:
-                self.logger.info(f"Miner with hotkey {response.axon.hotkey} gave a valid response/patch")
+                self.logger.info(f"Miner with hotkey {response.axon.hotkey} gave a valid response/patch: {response.patch[:50]}...")
                 uid = next(uid for uid, axon in zip(miner_uids, axons) if axon.hotkey == response.axon.hotkey)
                 working_miner_uids.append(uid)
                 finished_responses.append(IssueSolution(response.patch))
@@ -297,7 +309,7 @@ class Validator(BaseValidatorNeuron):
             rewards_list = await self.calculate_rewards(
                 repo,
                 problem,
-                finished_responses, 
+                finished_responses,
                 miner_hotkeys,
                 process_times,
             )
@@ -338,6 +350,12 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=ValidatorDefaults.CODINGTASK_TIMEOUT_MINS,
         help="How long to wait for a response from the miners, in minutes",
+    )
+    parser.add_argument(
+        "--use-mock-responses",
+        action="store_true",
+        default=False,
+        help="Run validator in mock mode, assigning dummy scores"
     )
     args, _ = parser.parse_known_args()
     return args

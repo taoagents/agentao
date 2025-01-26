@@ -73,7 +73,7 @@ class Miner(BaseMinerNeuron):
             actor_id=hotkey,
             actor_type="miner",
             is_mainnet=self.subtensor.network == "finney",
-            log_version=11,
+            log_version=12,
             session_id=''.join(random.choices(''.join(map(chr, range(33,127))), k=8)),
             network=self.subtensor.network
         )

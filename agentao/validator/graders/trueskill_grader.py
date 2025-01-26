@@ -6,7 +6,8 @@ import os
 import json
 
 from agentao.validator.graders.abstract_grader import GraderInterface, MinerSubmission
-from agentao.validator.graders.float_grader import FloatGrader
+from agentao.validator.graders.float_grader import FloatGrader, MockFloatGrader
+
 
 from dataclasses import asdict
 from agentao.helpers.clients import LogContext
@@ -129,3 +130,9 @@ class TrueSkillGrader(GraderInterface):
         for rating_result in new_ratings:
             for mhk, rating in rating_result.items():
                 self.ratings[mhk] = rating
+
+
+class MockTrueSkillGrader(TrueSkillGrader):
+    def __init__(self, logger: Logger):
+        super().__init__(logger)
+        self.float_grader = MockFloatGrader(logger)
