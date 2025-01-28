@@ -12,8 +12,12 @@
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
+from textwrap import dedent
 
 from dotenv import load_dotenv
+
+from agentao.miner.model_utils import get_envar_names_from_model_name, ALL_MODEL_NAMES, MODEL_CLASS_TO_ENVAR_NAMES
+
 load_dotenv()
 
 import argparse
@@ -21,6 +25,7 @@ import os
 import tempfile
 import time
 from pathlib import Path
+from typing import Dict
 from typing import Tuple
 import random
 
@@ -29,7 +34,7 @@ import yaml
 import agentao
 from agentao.base.miner import BaseMinerNeuron
 from agentao.helpers.classes import UnsolvedIssue
-from agentao.helpers.constants import MODEL_NAME_TO_ENVAR_NAME, SUPPORTED_MINER_MODELS, EXAMPLE_PATCH
+from agentao.helpers.constants import EXAMPLE_PATCH
 from agentao.helpers.helpers import clone_repo
 from agentao.miner.generate_solution import generate_code_patch
 from agentao.repo_environment import SUPPORTED_REPOS, REPO_TO_ENVIRONMENT_INFO
@@ -79,6 +84,8 @@ class Miner(BaseMinerNeuron):
         )
 
         self.logger: Logger = setup_logger(hotkey, log_session_context)
+
+        self.logger.info(f"Using model: {self.model_name}")
 
     async def forward(
         self, synapse: agentao.protocol.CodingTask
@@ -247,16 +254,28 @@ class Miner(BaseMinerNeuron):
 
 def init_swe_agent(model_name: str) -> None:
     """Creates keys.cfg file from envars"""
-    envar_names = [MODEL_NAME_TO_ENVAR_NAME[model_name]]
+    envar_names = get_envar_names_from_model_name(model_name)
 
     buffer = [f"{key}: '{os.environ[key]}'" for key in envar_names if key in os.environ]
     with open("SWE-agent/keys.cfg", "w") as f:
         f.write("\n".join(buffer) + "\n")
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--model", choices=SUPPORTED_MINER_MODELS, default=MinerDefaults.MODEL)
+def construct_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description=dedent(f"""We support the following models: OpenAI, Anthropic, Together, DeepSeek, Groq, Azure-hosted OpenAI, and local Ollama model running on localhost:11434. 
+        Each model corresponds to the following envars (Azure is optional for OpenAIModel): {
+        {   
+            model_class.__name__:envar_names
+            for model_class, envar_names in MODEL_CLASS_TO_ENVAR_NAMES.items()
+        }}
+        """)
+    )
+    parser.add_argument(
+        "--model",
+        help=f"The full list of supported models is: [{', '.join(ALL_MODEL_NAMES)}]",
+        default=MinerDefaults.MODEL,
+    )
     parser.add_argument("--max-instance-cost", type=float, default=MinerDefaults.MAX_INSTANCE_COST)
     parser.add_argument(
         "--use-mock-responses",
@@ -264,11 +283,28 @@ def parse_args() -> argparse.Namespace:
         default=False,
         help="Run miner in mock mode, returning a dummy patch"
     )
-    args, _ = parser.parse_known_args()
-    return args
+    parser.add_argument(
+        "--miner-help",
+        action="store_true",
+        default=False,
+        help="Print breakdown of supported models and miner args specific to the miner.py script"
+    )
+    return parser
+
+
+def main(args_dict: Dict) -> None:
+    with Miner(**args_dict) as miner:
+        while True:
+            time.sleep(5)
 
 # This is the main function, which runs the miner.
 if __name__ == "__main__":
-    with Miner(**vars(parse_args())) as miner:
-        while True:
-            time.sleep(5)
+    parser = construct_parser()
+    args, _ = parser.parse_known_args()
+
+    if args.miner_help:
+        parser.print_help()
+    else:
+        args_dict = vars(args)
+        args_dict.pop("miner_help")
+        main(args_dict)
