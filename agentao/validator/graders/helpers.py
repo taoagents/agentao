@@ -3,7 +3,8 @@ import re
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Final
+from subprocess import CompletedProcess
+from typing import Final, List
 
 import openai
 from git import Repo
@@ -44,16 +45,21 @@ def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> str:
         print("Cloning repo...")
         Repo.clone_from(f"https://github.com/{repo_path}", clone_to_path)
 
+    def run_subprocess_command(args: List[str]) -> CompletedProcess[str]:
+        result = subprocess.run(
+            args,
+            cwd=str(clone_to_path),
+            capture_output=True,
+            text=True,
+        )
+        logger.info(f"Output of `{' '.join(args)}`: {result}")
+        return result
+
     with tempfile.NamedTemporaryFile(mode="w", suffix=".patch", delete=False) as temp_file:
         temp_file.write(patch)
         temp_file.flush()
 
-        result = subprocess.run(
-            ["git", "apply", "--check", temp_file.name],
-            cwd=str(clone_to_path),
-            capture_output=True,
-            text=True
-        )
+        result = run_subprocess_command(["git", "apply", "--check", temp_file.name])
 
         if result.returncode != 0:
             logger.info(f"Failed to apply patch with error: {result.stderr}")
@@ -65,6 +71,28 @@ def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> str:
         logger.info(f"Patch length after removing comments, before removing docstrings: {len(patch)}")
         patch = remove_docstrings(patch)
         logger.info(f"Patch length after removing docstrings: {len(patch)}")
+        result_numstat = run_subprocess_command(["git", "apply", "--numstat", temp_file.name])
+
+        # Parse output of git apply --numstat
+        touched_filenames = [filename.split("\n")[0] for filename in result_numstat.stdout.split("\t")[2::2]]
+        logger.info(f"Touched filenames are: {touched_filenames}")
+
+        # Check if any linter errors were introduced
+        pylint_command = ["pylint", "--disable=import-error,no-member", "--errors-only"]
+
+        result_pylint_before = run_subprocess_command([*pylint_command, *touched_filenames])
+
+        result_apply = run_subprocess_command(["git", "apply", temp_file.name])
+        logger.info(f"Results of apply command: {result_apply}")
+
+        result_pylint_after = run_subprocess_command([*pylint_command, *touched_filenames])
+
+        run_subprocess_command(["git", "reset", "--hard", "HEAD"])
+
+        if result_pylint_before.returncode == 0 and result_pylint_after.returncode != 0:
+            logger.info("Patch introduces linter errors, terminating early...")
+            logger.info(f"Linter output: {result_pylint_after.stdout}")
+            return ""
 
         logger.info(f"Finished preprocessing patch for repo {repo_path}. New length: {len(patch)}")
 
