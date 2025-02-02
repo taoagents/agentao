@@ -127,13 +127,21 @@ PRICING_DATA_PER_MILLION_TOKENS: Final[Dict[str, Dict[str, float]]] = {
 
 BASE_DASHBOARD_URL: Final[str] = "https://agentao-dashboard.vercel.app"
 
-EXAMPLE_PATCH =  """
-diff --git a/patches/dummy.py b/patches/dummy.py
-new file mode 100644
-index 00000000..55b8c677
---- /dev/null
-+++ b/doc/tools/convert_docs.py
-@@ -0,0 +1,190 @@
-+def main():
-+    print(f"Dummy Patch")
+EXAMPLE_PATCH = """
+diff --git a/tests/test_matrix.py b/tests/test_matrix.py
+index c8019b47..9416d2e3 100644
+--- a/tests/test_matrix.py
++++ b/tests/test_matrix.py
+@@ -61,8 +61,8 @@ class TestHeatmap:
+             def __init__(self, data):
+                 self.data = data
+
+-            def __array__(self, **kwargs):
+-                return np.asarray(self.data, **kwargs)
++            def __array__(self, dtype=None, copy=None):
++                return np.asarray(self.data, dtype=dtype, copy=copy)
+
+         p = mat._HeatMapper(ArrayLike(self.x_norm), **self.default_kws)
+         npt.assert_array_equal(p.plot_data, self.x_norm)
+
 """
