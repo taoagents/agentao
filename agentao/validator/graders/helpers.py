@@ -59,7 +59,12 @@ def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> str:
             logger.info(f"Failed to apply patch with error: {result.stderr}")
             return ""
 
-        processed_patch = remove_comments(patch)
+        logger.info(f"Patch length before removing comments: {len(patch)}")
+        patch = remove_comments(patch)
+
+        logger.info(f"Patch length after removing comments, before removing docstrings: {len(patch)}")
+        patch = remove_docstrings(patch)
+        logger.info(f"Patch length after removing docstrings: {len(patch)}")
 
         logger.info(f"Finished preprocessing patch for repo {repo_path}. New length: {len(patch)}")
 
@@ -68,16 +73,16 @@ def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> str:
         return ""
 
     logger.info(f"Making call to clean patch context......")
-    cleaned_patch_context = OPENAI_CLIENT.chat.completions.create(
+    patch = OPENAI_CLIENT.chat.completions.create(
         model="gpt-4",
         messages=[
             {"role": "system", "content": CLEANER_SYSTEM_PROMPT},
             {"role": "user", "content": patch}
         ]
     ).choices[0].message.content
-    logger.info(f"Received cleaned patch, length {len(cleaned_patch_context)}")
+    logger.info(f"Received cleaned patch, length {len(patch)}")
 
-    return processed_patch
+    return patch
 
 
 def remove_comments(patch_content: str) -> str:
@@ -104,6 +109,50 @@ def remove_comments(patch_content: str) -> str:
 
             cleaned_lines.append(cleaned_line)
         else:
+            cleaned_lines.append(line)
+
+    return "\n".join(cleaned_lines)
+
+
+def remove_docstrings(patch_content: str) -> str:
+    """
+    Process a Git patch string to remove added lines that introduce or modify docstrings,
+    while keeping the '+' intact for other additions.
+
+    :param patch_content: The content of a Git patch as a string.
+    :return: The cleaned patch content as a string.
+    """
+    cleaned_lines = []
+    in_docstring = False
+    docstring_delim = None
+
+    for line in patch_content.splitlines():
+        if line.startswith('+'):  # Only process added lines
+            stripped_line = line[1:].lstrip()  # Remove '+' for checking
+
+            # If we are inside a docstring, check for closing delimiter
+            if in_docstring:
+                if docstring_delim in stripped_line:  # Closing delimiter found
+                    in_docstring = False
+                continue  # Skip all lines inside the docstring
+
+            # Detect docstring start (including when a patch adds text to an existing docstring)
+            if stripped_line.startswith(('"""', "'''")):
+                docstring_delim = stripped_line[:3]  # Capture delimiter type
+                if stripped_line.count(docstring_delim) >= 2:
+                    continue  # Single-line docstring, skip this line
+                in_docstring = True
+                continue  # Start of multiline docstring, skip line
+
+            cleaned_lines.append(line)  # Keep non-docstring lines
+        else:
+            # If the line is not an addition (`+`), keep it unchanged
+            if line.lstrip().startswith(('"""', "'''")) and not in_docstring:
+                in_docstring = True
+                docstring_delim = line.lstrip()[:3]  # Track delimiter
+            elif docstring_delim and docstring_delim in line:
+                in_docstring = False  # Close docstring block
+
             cleaned_lines.append(line)
 
     return "\n".join(cleaned_lines)

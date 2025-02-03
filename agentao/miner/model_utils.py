@@ -15,7 +15,7 @@ ALL_MODEL_CLASSES: List[Type[models.BaseModel]] = [
 ALL_MODEL_NAMES: List[str] = list(chain.from_iterable(
     list(set(model_class.MODELS.keys()) | set(model_class.SHORTCUTS.keys()))
     for model_class in ALL_MODEL_CLASSES
-)) + ["ollama"]
+)) + ["ollama:<model name>, e.g. ollama:llama-7b"]
 
 MODEL_CLASS_TO_ENVAR_NAMES: Dict[Type[models.BaseModel], List[str]] = {
     models.TogetherModel: ["TOGETHER_API_KEY"],
