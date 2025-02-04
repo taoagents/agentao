@@ -16,6 +16,7 @@
 from dotenv import load_dotenv
 
 from agentao.utils.load_sample_generated_problems import load_sample_problems
+from agentao.validator.graders.rtc_grader import RtcGrader
 
 load_dotenv()
 
@@ -43,7 +44,7 @@ from agentao.utils.uids import check_uid_availability
 from agentao.validator.generate_problem import create_problem_statements
 from agentao.validator.graders.abstract_grader import MinerSubmission
 from agentao.validator.graders.trueskill_grader import TrueSkillGrader, MockTrueSkillGrader
-from neurons.constants import LLM_EVAL_MULT, PROCESS_TIME_MULT, ValidatorDefaults
+from neurons.constants import LLM_EVAL_MULT, PROCESS_TIME_MULT, RTC_SCORE_MULT, ValidatorDefaults
 from neurons.constants import UPLOAD_ISSUE_ENDPOINT
 
 class Validator(BaseValidatorNeuron):
@@ -83,6 +84,8 @@ class Validator(BaseValidatorNeuron):
         self.miner_request_timeout_mins = miner_request_timeout
         self.use_mock_responses = use_mock_responses
 
+        self.rtc_grader = RtcGrader(logger=self.logger)
+
         if self.use_mock_responses:
             self.grader = MockTrueSkillGrader(logger=self.logger)
         else:
@@ -113,12 +116,21 @@ class Validator(BaseValidatorNeuron):
             for t in process_times
         ])
 
+        rtc_scores = np.array(self.rtc_grader.grade([
+            MinerSubmission(
+                repo=repo,
+                problem=problem,
+                solution=issue_solution,
+                miner_hotkey=hk,
+            ) for issue_solution, hk in zip(issue_solutions, miner_hotkeys)
+        ]))
+
         final_scores = []
-        for llm_eval, response_time in zip(llm_evals, response_times):
+        for llm_eval, response_time, rtc_score in zip(llm_evals, response_times, rtc_scores):
             if llm_eval == 0.0:
                 final_scores.append(ValidatorDefaults.NO_RESPONSE_MIN)
             else:
-                final_scores.append(LLM_EVAL_MULT*llm_eval + PROCESS_TIME_MULT*response_time)
+                final_scores.append(LLM_EVAL_MULT*llm_eval + PROCESS_TIME_MULT*response_time + RTC_SCORE_MULT*rtc_score)
 
         # Check if for each solution, whether the patch is the same as another miner submitted patch.
         # If so, then the score is 0.0

@@ -7,8 +7,9 @@ UPLOAD_ISSUE_ENDPOINT: Final[str] = "https://gh-issue-pull.onrender.com/upload_i
 DOCKER_CACHE_LEVEL: Final[str] = "instance"
 
 ## Validator eval constants
-LLM_EVAL_MULT: Final[float] = 9.0
-PROCESS_TIME_MULT: Final[float] = 1.0
+LLM_EVAL_MULT: Final[float] = 8.0
+PROCESS_TIME_MULT: Final[float] = 0.5
+RTC_SCORE_MULT: Final[float] = 1.5
 
 class ValidatorDefaults:
     CODINGTASK_TIMEOUT_MINS = 30.
