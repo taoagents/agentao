@@ -44,8 +44,6 @@ class RtcGrader(GraderInterface):
         problem_statements = [s.problem.problem_statement for s in submissions]
         inv_prompts = [self.inverse_prompt(s.solution.patch, s.repo) for s in submissions]
 
-        self.logger.info(f"Generated inverse prompts: {inv_prompts}")
-
         _, _, F1 = bert_score.score(problem_statements, inv_prompts, lang='en')
 
         self.logger.info(f"Graded miners:: {F1}")
