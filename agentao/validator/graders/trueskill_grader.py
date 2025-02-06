@@ -44,6 +44,8 @@ class TrueSkillGrader(GraderInterface):
         for miner_hotkey, rating in state.items():
             self.ratings[miner_hotkey] = self.env.create_rating(mu=rating[0], sigma=rating[1])
 
+        self.logger.info(f"Loaded Trueskill ratings from file")
+
     def save_state(self) -> None:
         """
         Save the state of the ratings to a file.
