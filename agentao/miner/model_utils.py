@@ -9,11 +9,17 @@ ALL_MODEL_CLASSES: List[Type[models.BaseModel]] = [
     models.GroqModel,
     models.AnthropicModel,
     models.BedrockModel,
-    models.OllamaModel
+    models.OllamaModel,
+    models.CorcelModel,
 ]
 
 ALL_MODEL_NAMES: List[str] = list(chain.from_iterable(
     list(set(model_class.MODELS.keys()) | set(model_class.SHORTCUTS.keys()))
+    if model_class != models.CorcelModel else
+        [
+            f"corcel:{model_name}"
+            for model_name in list(models.CorcelModel.MODELS.keys()) + list(models.CorcelModel.SHORTCUTS.keys())
+        ]
     for model_class in ALL_MODEL_CLASSES
 )) + ["ollama:<model name>, e.g. ollama:llama-7b"]
 
@@ -34,6 +40,7 @@ MODEL_CLASS_TO_ENVAR_NAMES: Dict[Type[models.BaseModel], List[str]] = {
     models.GroqModel: ["GROQ_API_KEY"],
     models.AnthropicModel: ["ANTHROPIC_API_KEY"],
     models.OllamaModel: [],
+    models.CorcelModel: ["CORCEL_API_KEY"],
 }
 
 
@@ -51,6 +58,8 @@ def get_model_from_model_name(model_name: str) -> Type[models.BaseModel]:
         return models.BedrockModel
     elif model_name.startswith("ollama"):
         return models.OllamaModel
+    elif model_name.startswith("corcel:"):
+        return models.CorcelModel
     elif model_name.startswith("deepseek"):
         return models.DeepSeekModel
     elif model_name in models.TogetherModel.SHORTCUTS:
