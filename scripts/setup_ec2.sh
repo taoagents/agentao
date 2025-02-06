@@ -42,12 +42,6 @@ sudo apt-get -y install docker-ce docker-ce-cli containerd.io
 # Enable and start Docker service
 sudo systemctl enable --now docker
 
-# Enable running docker without sudo
-sudo usermod -aG docker $USER
-newgrp docker
-
-docker --version
-docker run hello-world
 echo "Docker has been installed successfully!"
 #########################################################################
 
@@ -60,3 +54,7 @@ git clone --recurse-submodules https://github.com/taoagents/agentao
 pushd agentao
 pip install -e SWE-agent -e .
 popd
+
+# Enable running docker without sudo
+sudo usermod -aG docker $USER
+newgrp docker  # Starts new shell
