@@ -229,6 +229,7 @@ setup(
         "groq",
         "gymnasium",
         "PyGithub",
+        "bert-score"
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
