@@ -14,6 +14,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 from dotenv import load_dotenv
+import requests
 
 from agentao.utils.load_sample_generated_problems import load_sample_problems
 from agentao.validator.graders.rtc_grader import RtcGrader
@@ -45,7 +46,7 @@ from agentao.validator.generate_problem import create_problem_statements
 from agentao.validator.graders.abstract_grader import MinerSubmission
 from agentao.validator.graders.trueskill_grader import TrueSkillGrader, MockTrueSkillGrader
 from neurons.constants import LLM_EVAL_MULT, PROCESS_TIME_MULT, RTC_SCORE_MULT, ValidatorDefaults
-from neurons.constants import UPLOAD_ISSUE_ENDPOINT
+from neurons.constants import UPLOAD_ISSUE_ENDPOINT, OPEN_ISSUE_ENDPOINT
 
 class Validator(BaseValidatorNeuron):
     """
@@ -306,6 +307,61 @@ class Validator(BaseValidatorNeuron):
 
         self.logger.reset_forward_pass_context()
 
+    async def organic_forward(self):
+        """
+        Organic forward loop.
+        """
+        forward_pass_id = str(uuid.uuid4())
+        self.logger.add_forward_pass_context(forward_pass_id)
+        self.logger.debug("Starting organic forward pass...")
+
+        # Subsample the highest scoring miners
+        miner_uids = [
+            uid for uid in range(len(self.metagraph.S))
+            if check_uid_availability(self.metagraph, uid, self.config.neuron.vpermit_tao_limit)
+        ]
+        # Get the top 20% of scores in self.scores
+        top_5 = np.argsort(self.scores)[-5:][::-1]
+        miner_uids = [uid for uid in miner_uids if uid in top_5]
+
+        self.logger.info(f"Found {len(miner_uids)} miner UIDs: {miner_uids}")
+
+        if len(miner_uids) == 0:
+            self.logger.info("No miners available to query. Exiting organic forward pass...")
+            return
+        
+        axons = [self.metagraph.axons[uid] for uid in miner_uids]
+
+        try:
+            response = requests.get(OPEN_ISSUE_ENDPOINT)
+            response = response.json()
+        except Exception as e:
+            self.logger.exception(f"Error getting open issue: {e}")
+            return
+        
+        responses: List[CodingTask] = await self.dendrite(
+            axons=axons,
+            synapse=CodingTask(
+                repo=response["repo"],
+                problem_statement=response["problem_statement"],
+                patch=None,
+            ),
+            deserialize=False,
+            timeout=timedelta(minutes=self.miner_request_timeout_mins).total_seconds(),
+        )
+
+        for r in responses:
+            # Only record the submission if there is actually a patch
+            if r.patch not in [None, ""]:
+                self.logger.info(f"Received responses from miners for organic task", extra=asdict(LogContext(
+                    log_type="lifecycle",
+                    event_type="miner_submitted",
+                    additional_properties={"miner_hotkey": r.axon.hotkey, "patch_type": "organic", "patch": r.patch, "response_time": r.dendrite.process_time, "forward_pass_id": forward_pass_id}
+                )))
+
+        # TODO: Punish miners that don't respond
+
+        
 
     async def handle_synthetic_patch_response(
         self,
