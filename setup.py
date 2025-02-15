@@ -83,6 +83,7 @@ setup(
         "pylint",
         "rich>=13",
         "pytest>=8",
+        "pytest-json-report",
         "numpy>=1",
         "setuptools>=68",
         "ipython",
