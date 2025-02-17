@@ -161,7 +161,7 @@ pm2 start neurons/miner.py --name agentao-miner -- \
 ```sh
 pm2 start neurons/miner.py --name agentao-miner -- \
     --netuid 244 \
-    --subtensor.chain_endpoint wss://test.finney.opentensor.ai:443 \
+    --subtensor.network test \
     --wallet.name <wallet> \
     --wallet.hotkey <hotkey>
     [--model <model to use, default is gpt4omini> (optional)]
@@ -219,7 +219,7 @@ Run the validator script via `run_validator.sh`, which will automatically keep i
   --name agentao-validator \
   -- \
   --netuid 244 \
-  --subtensor.chain_endpoint wss://test.finney.opentensor.ai:443 \
+  --subtensor.network test \
   --wallet.name <wallet> \
   --wallet.hotkey <hotkey>
 ```
