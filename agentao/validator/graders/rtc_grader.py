@@ -34,7 +34,6 @@ class RtcGrader(GraderInterface):
             messages=[
                 {"role": "system", "content": RTC_PROMPT.format(patch=patch, repo=repo)},
             ],
-            temperature=0.7,
             response_format=RtcResponseFormat,
         ).choices[0].message.parsed.inverse_prompt
 
