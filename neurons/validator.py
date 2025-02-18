@@ -44,7 +44,7 @@ from agentao.utils.uids import check_uid_availability
 from agentao.validator.generate_problem import create_problem_statements
 from agentao.validator.graders.abstract_grader import MinerSubmission
 from agentao.validator.graders.trueskill_grader import TrueSkillGrader, MockTrueSkillGrader
-from neurons.constants import LLM_EVAL_MULT, PROCESS_TIME_MULT, RTC_SCORE_MULT, ValidatorDefaults
+from neurons.constants import LLM_EVAL_MULT, LOG_SESSION_CONTEXT, PROCESS_TIME_MULT, RTC_SCORE_MULT, ValidatorDefaults
 from neurons.constants import UPLOAD_ISSUE_ENDPOINT
 
 class Validator(BaseValidatorNeuron):
@@ -70,7 +70,7 @@ class Validator(BaseValidatorNeuron):
             actor_id=hotkey,
             actor_type="validator",
             is_mainnet=self.subtensor.network == "finney",
-            log_version=16,
+            log_version=LOG_SESSION_CONTEXT,
             session_id=''.join(random.choices(''.join(map(chr, range(33,127))), k=8)),
             network=self.subtensor.network
         )

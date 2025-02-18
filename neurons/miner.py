@@ -17,6 +17,7 @@ from textwrap import dedent
 from dotenv import load_dotenv
 
 from agentao.miner.model_utils import get_envar_names_from_model_name, ALL_MODEL_NAMES, MODEL_CLASS_TO_ENVAR_NAMES
+from neurons.constants import LOG_SESSION_CONTEXT
 
 load_dotenv()
 
@@ -78,7 +79,7 @@ class Miner(BaseMinerNeuron):
             actor_id=hotkey,
             actor_type="miner",
             is_mainnet=self.subtensor.network == "finney",
-            log_version=16,
+            log_version=LOG_SESSION_CONTEXT,
             session_id=''.join(random.choices(''.join(map(chr, range(33,127))), k=8)),
             network=self.subtensor.network
         )
