@@ -119,12 +119,14 @@ def _grade_miner_solution(miner_submission: MinerSubmission, logger: Logger) -> 
 
     logger.info("Making call to grade code...")
     completion = OPENAI_CLIENT.beta.chat.completions.parse(
-        model='gpt-4o-2024-08-06',
+        model='gpt-4o-mini',
         messages=[
             {"role": "system", "content": GRADER_SYSTEM_PROMPT},
             {"role": "user", "content": solution_context},
         ],
         response_format=FloatGraderScore,
+        temperature=0,
+        seed=42,
     )
     miner_output_score: FloatGraderScore = completion.choices[0].message.parsed
     logger.info("Finished making call to grade code")

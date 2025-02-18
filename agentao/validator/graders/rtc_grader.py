@@ -30,7 +30,7 @@ class RtcGrader(GraderInterface):
     def inverse_prompt(self, patch: str, repo: str) -> str:
         OPENAI_CLIENT: Final[openai.Client] = openai.Client(api_key=os.getenv("OPENAI_API_KEY"))
         inv_prompt = OPENAI_CLIENT.beta.chat.completions.parse(
-            model='gpt-4o-2024-08-06',
+            model='gpt-4o-mini',
             messages=[
                 {"role": "system", "content": RTC_PROMPT.format(patch=patch, repo=repo)},
             ],
