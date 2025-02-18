@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 import requests
 
 from agentao.utils.load_sample_generated_problems import load_sample_problems
+from agentao.validator.graders.helpers import preprocess_patch
 from agentao.validator.graders.rtc_grader import RtcGrader
 
 load_dotenv()
@@ -332,9 +333,10 @@ class Validator(BaseValidatorNeuron):
         
         axons = [self.metagraph.axons[uid] for uid in miner_uids]
 
+        # TODO: do this transparently
         try:
-            response = requests.get(OPEN_ISSUE_ENDPOINT)
-            response = response.json()
+            open_issue = requests.get(OPEN_ISSUE_ENDPOINT)
+            open_issue = response.json()
         except Exception as e:
             self.logger.exception(f"Error getting open issue: {e}")
             return
@@ -342,8 +344,8 @@ class Validator(BaseValidatorNeuron):
         responses: List[CodingTask] = await self.dendrite(
             axons=axons,
             synapse=CodingTask(
-                repo=response["repo"],
-                problem_statement=response["problem_statement"],
+                repo=open_issue["repo"],
+                problem_statement=open_issue["problem_statement"],
                 patch=None,
             ),
             deserialize=False,
@@ -360,8 +362,29 @@ class Validator(BaseValidatorNeuron):
                 )))
 
         # TODO: Punish miners that don't respond
+        working_miner_uids = []
+        finished_responses = []
+        for response in responses:
+            if not response:
+                self.logger.info(f"Miner with hotkey {response.axon.hotkey} did not give a response")
+            elif response.patch in [None, ""] or not response.axon or not response.axon.hotkey:
+                self.logger.info(f"Miner with hotkey {response.axon.hotkey} gave a response object but no patch")
+            else:
+                self.logger.info(f"Miner with hotkey {response.axon.hotkey} gave a valid response/patch: {response.patch[:50]}...")
+                uid = next(uid for uid, axon in zip(miner_uids, axons) if axon.hotkey == response.axon.hotkey)
+                # Need to watch out for injections
+                if preprocess_patch(open_issue['repo'], response.patch, self.logger) != "":
+                    working_miner_uids.append(uid)
+                    finished_responses.append(IssueSolution(response.patch))
 
-        
+        # Lets randomly choose one of the responses to be the correct one
+        correct_idx = random.randint(0, len(finished_responses) - 1)
+        correct_patch = finished_responses[correct_idx]
+        correct_uid = working_miner_uids[correct_idx]
+
+        # Submit the PR to the repo
+
+        # TODO: What if its an existing PR?
 
     async def handle_synthetic_patch_response(
         self,
