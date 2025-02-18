@@ -13,7 +13,7 @@ RTC_SCORE_MULT: Final[float] = 1.0
 
 class ValidatorDefaults:
     CODINGTASK_TIMEOUT_MINS = 30.
-    MODEL = "gpt4o"
+    MODEL = "gpt4omini"
     INGESTION_HEURISTICS = IngestionHeuristics(
         min_files_to_consider_dir_for_problems=3,
         min_file_content_len=50,
