@@ -67,7 +67,7 @@ class FloatGrader(GraderInterface):
     def grade(self, submissions: List[MinerSubmission], forward_pass_id: str) -> List[float]:
         overall_scores = []
 
-        float_grader_scores = []
+        float_grader_scores: List[FloatGraderScore] = []
 
         for submission in submissions:
             miner_output_score = _grade_miner_solution(submission, self.logger)
@@ -78,8 +78,9 @@ class FloatGrader(GraderInterface):
                 overall_scores.append(_compute_overall_score(miner_output_score))
 
         for (sub, score) in zip(submissions, float_grader_scores):
-            hk = sub
-            self.logger.info(f"Graded miners {hk}: {score}", extra=asdict(LogContext(
+            hk = sub.miner_hotkey
+            score = score.model_dump()
+            self.logger.info(f"{score}", extra=asdict(LogContext(
                     log_type="lifecycle",
                     event_type="float_score",
                     additional_properties={"question_id": submission.problem.problem_uuid, "miner_hotkey": hk, "forward_pass_id": forward_pass_id}
