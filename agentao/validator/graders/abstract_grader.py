@@ -14,6 +14,6 @@ class MinerSubmission(BaseModel):
 
 
 class GraderInterface(ABC):
-    def grade(self, submissions: List[MinerSubmission], forward_pass_id: str) -> List[float]:
+    def grade(self, submissions: List[MinerSubmission]) -> List[float]:
         raise NotImplementedError("AbstractGrader.grade() must be overridden")
 

@@ -20,7 +20,7 @@ class EloGrader(GraderInterface):
     def __init__(self, logger: Logger):
         self.logger = logger
 
-    def grade(self, submissions: List[MinerSubmission], _forward_pass_id: str) -> List[float]:
+    def grade(self, submissions: List[MinerSubmission]) -> List[float]:
         scores = rank_elo(submissions, self.logger)
         return scores
 
