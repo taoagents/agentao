@@ -19,9 +19,6 @@
 
 import argparse
 import asyncio
-from dataclasses import asdict
-from logging import Logger
-import random
 import bittensor as bt
 import copy
 import numpy as np
@@ -34,12 +31,8 @@ from agentao.base.neuron import BaseNeuron
 from agentao.base.utils.weight_utils import (
     convert_weights_and_uids_for_emit,
 )  # TODO: Replace when bittensor switches to numpy
-from agentao.helpers.clients import LogContext, LogSessionContext, setup_logger
 from agentao.mock import MockDendrite
 from agentao.utils.config import add_validator_args
-from neurons.constants import LOG_SESSION_CONTEXT
-
-U16_MAX = 65535
 
 
 def normalize(x, p=2, dim=0):
@@ -105,19 +98,6 @@ class BaseValidatorNeuron(BaseNeuron):
         self.is_running: bool = False
         self.thread: Union[threading.Thread, None] = None
         self.lock = asyncio.Lock()
-
-        # Setup logging
-        hotkey = self.wallet.hotkey.ss58_address
-        log_session_context = LogSessionContext(
-            actor_id=hotkey,
-            actor_type="validator",
-            is_mainnet=self.subtensor.network == "finney",
-            log_version=LOG_SESSION_CONTEXT,
-            session_id=''.join(random.choices(''.join(map(chr, range(33,127))), k=8)),
-            network=self.subtensor.network
-        )
-
-        self.logger: Logger = setup_logger(hotkey, log_session_context)
 
     def serve_axon(self):
         """Serve axon to enable external connections."""
@@ -305,12 +285,6 @@ class BaseValidatorNeuron(BaseNeuron):
         bt.logging.debug("uint_weights", uint_weights)
         bt.logging.debug("uint_uids", uint_uids)
 
-        float_weights = [float(w) / float(U16_MAX) for w in uint_weights]
-        self.logger.info(f"{float_weights}", extra=asdict(LogContext(
-                log_type="lifecycle",
-                event_type="set_weights",
-            )))
-
         # Set the weights on chain via our subtensor connection.
         result, msg = self.subtensor.set_weights(
             wallet=self.wallet,
@@ -398,8 +372,10 @@ class BaseValidatorNeuron(BaseNeuron):
         def calculate_scores(old_scores: np.ndarray) -> np.ndarray:
             scattered_rewards = np.copy(old_scores)  # Create a copy to modify
             np.put_along_axis(scattered_rewards, uids_tensor, rewards, axis=0)
+            bt.logging.debug(f"Scattered rewards: {rewards}")
 
             scores = alpha * scattered_rewards + (1 - alpha) * old_scores
+            bt.logging.debug(f"New moving avg scores: {scores}")
             return scores
 
         if task_type == TaskType.LABELLED_ISSUE:
