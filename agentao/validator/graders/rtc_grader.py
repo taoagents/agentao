@@ -40,12 +40,13 @@ class RtcGrader(GraderInterface):
         return inv_prompt
     
     def grade(self, submissions: List[MinerSubmission]) -> List[float]:
-        self.logger.info(f"Grading {len(submissions)} miners for RTC grader")
+        self.logger.debug(f"Grading {len(submissions)} miners for RTC grader")
         problem_statements = [s.problem.problem_statement for s in submissions]
         inv_prompts = [self.inverse_prompt(s.solution.patch, s.repo) for s in submissions]
 
         _, _, F1 = bert_score.score(problem_statements, inv_prompts, lang='en')
 
-        self.logger.info(f"Graded miners:: {F1}")
+        hotkey_grade = [(s.miner_hotkey, score) for (s, score) in zip(submissions, F1)]
+        self.logger.info(f"Graded miners: {hotkey_grade}")
 
         return F1.tolist()

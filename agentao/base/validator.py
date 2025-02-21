@@ -372,10 +372,10 @@ class BaseValidatorNeuron(BaseNeuron):
         def calculate_scores(old_scores: np.ndarray) -> np.ndarray:
             scattered_rewards = np.copy(old_scores)  # Create a copy to modify
             np.put_along_axis(scattered_rewards, uids_tensor, rewards, axis=0)
-            bt.logging.debug(f"Scattered rewards: {rewards}")
+            bt.logging.info(f"Scattered rewards: {rewards}")
 
             scores = alpha * scattered_rewards + (1 - alpha) * old_scores
-            bt.logging.debug(f"New moving avg scores: {scores}")
+            bt.logging.info(f"New moving avg scores: {scores}")
             return scores
 
         if task_type == TaskType.LABELLED_ISSUE:

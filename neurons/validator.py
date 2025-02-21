@@ -97,6 +97,7 @@ class Validator(BaseValidatorNeuron):
         problem: GeneratedProblemStatement,
         issue_solutions: List[IssueSolution],
         miner_hotkeys: List[str],
+        # These are in seconds 
         process_times: List[float],
     ) -> np.ndarray:
         """
@@ -111,10 +112,14 @@ class Validator(BaseValidatorNeuron):
             ) for issue_solution, hk in zip(issue_solutions, miner_hotkeys)
         ]))
         
-        response_times = np.array([
-            exponential_decay(self.miner_request_timeout_mins * 60, t)
-            for t in process_times
-        ])
+        response_time_scores = [exponential_decay(self.miner_request_timeout_mins * 60, t) for t in process_times]
+        for hk, rt, rts in (miner_hotkeys, response_times, response_time_scores):
+            self.logger.info(f"Response time for miner {hk} is {rt} seconds -> score={rts}", extra=asdict(LogContext(
+                log_type="lifecycle",
+                event_type="response_time",
+                additional_properties={"response_time": rt, "miner_hotkey": hk, "response_time_score": rts}
+            )))
+        response_times = np.array(response_time_scores)
 
         rtc_scores = np.array(self.rtc_grader.grade([
             MinerSubmission(
@@ -260,7 +265,13 @@ class Validator(BaseValidatorNeuron):
                 self.logger.info(f"Received responses from miners for task {problem.problem_uuid}", extra=asdict(LogContext(
                     log_type="lifecycle",
                     event_type="miner_submitted",
-                    additional_properties={"miner_hotkey": r.axon.hotkey, "question_id": problem.problem_uuid, "patch": r.patch, "response_time": r.dendrite.process_time, "forward_pass_id": forward_pass_id}
+                    additional_properties={
+                        "miner_hotkey": r.axon.hotkey, 
+                        "question_id": problem.problem_uuid, 
+                        "patch": r.patch, 
+                        "response_time": r.dendrite.process_time, 
+                        "forward_pass_id": forward_pass_id
+                    }
                 )))
 
         working_miner_uids: List[int] = []
@@ -275,7 +286,6 @@ class Validator(BaseValidatorNeuron):
             elif response.patch in [None, ""] or not response.axon or not response.axon.hotkey:
                 self.logger.info(f"Miner with hotkey {response.axon.hotkey} gave a response object but no patch")
             else:
-                self.logger.info(f"Miner with hotkey {response.axon.hotkey} gave a valid response/patch: {response.patch[:50]}...")
                 uid = next(uid for uid, axon in zip(miner_uids, axons) if axon.hotkey == response.axon.hotkey)
                 working_miner_uids.append(uid)
                 finished_responses.append(IssueSolution(response.patch))
@@ -328,8 +338,13 @@ class Validator(BaseValidatorNeuron):
         except Exception as e:
             self.logger.exception(f"Error calculating rewards: {e}")
             return
-
-        self.logger.info(f"Rewards: {rewards_list}")
+        
+        for hk, reward in zip(miner_hotkeys, rewards_list):
+            self.logger.info(f"Reward for miner {hk} is {reward}", extra=asdict(LogContext(
+                log_type="lifecycle",
+                event_type="reward_calculated",
+                additional_properties={"miner_hotkey": hk, "reward": reward, "forward_pass_id": forward_pass_id}
+            )))
 
         # reward the miners who succeeded
         self.update_scores(
