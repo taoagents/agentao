@@ -14,8 +14,14 @@ load_dotenv()
 
 lifecycle_events = {
     "question_generated": ["question_id", "question_text"],
-    "miner_submitted": ["question_id", "miner_hotkey", "patch", "response_time"],
-    "solution_selected": ["question_id", "grade", "miner_hotkey"]
+    "miner_submitted": ["question_id", "miner_hotkey", "patch", "response_time", "forward_pass_id"],
+    "solution_selected": ["question_id", "grade", "miner_hotkey", "forward_pass_id"],
+    "set_weights": [],
+    "float_score": ["question_id", "miner_hotkey", "forward_pass_id"],
+    "rtc_score": ["grade", "miner_hotkey", "forward_pass_id"],
+    "trueskill_score": ["question_id", "grade", "miner_hotkey", "forward_pass_id"],
+    "response_score": ["response_time", "miner_hotkey", "response_time_score", "forward_pass_id"],
+    "reward_calculated": ["miner_hotkey", "reward", "forward_pass_id"],
 }
 
 @dataclass
@@ -66,6 +72,7 @@ def record_solution_selected(
     submitting_hotkey: str,
     is_mainnet: bool,
     grade: int,
+    forward_pass_id: str,
     base_url: str = BASE_DASHBOARD_URL
 ) -> requests.Response:
     endpoint = f"{base_url}/api/trpc/question.recordSolutionSelected"
@@ -76,7 +83,8 @@ def record_solution_selected(
             "miner_hotkey": miner_hotkey,
             "submitting_hotkey": submitting_hotkey,
             "is_mainnet": is_mainnet,
-            "grade": grade
+            "grade": grade,
+            "forward_pass_id": forward_pass_id,
         }
     }
     
@@ -256,7 +264,8 @@ class AgentaoHandler(logging.Handler):
                         miner_hotkey=formatted_properties.get("miner_hotkey"),
                         submitting_hotkey=self._context.actor_id,
                         is_mainnet=self._context.is_mainnet,
-                        grade=formatted_properties.get("grade")
+                        grade=formatted_properties.get("grade"),
+                        forward_pass_id=formatted_properties.get("forward_pass_id")
                     )
 
             else:

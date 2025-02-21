@@ -91,7 +91,14 @@ class TrueSkillGrader(GraderInterface):
                 continue
             miner_rating = self.ratings[submission.miner_hotkey]
             miner_rating = miner_rating.mu - 3 * miner_rating.sigma
-            ratings.append(1 / (1 + np.exp(-self.apha * (miner_rating - mean_score))))
+            miner_rating = 1 / (1 + np.exp(-self.apha * (miner_rating - mean_score)))
+            ratings.append(miner_rating)
+
+            self.logger.info(f"Graded miner {submission.miner_hotkey} with score of {miner_rating}", extra=asdict(LogContext(
+                log_type="lifecycle",
+                event_type="trueskill_score",
+                additional_properties={"question_id": submission.problem.problem_uuid, "grade": miner_rating, "miner_hotkey": submission.miner_hotkey, "forward_pass_id": forward_pass_id}
+            )))
 
         self.save_state()
         self.logger.info(f"Ratings: {ratings}")
