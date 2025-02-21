@@ -1,3 +1,4 @@
+from dataclasses import asdict
 import os
 import random
 from statistics import mean
@@ -9,6 +10,7 @@ from pydantic import BaseModel
 
 from agentao.helpers.classes import GeneratedProblemStatement, IssueSolution, ValidatorModelStats
 from agentao.validator.graders.abstract_grader import MinerSubmission, GraderInterface
+from agentao.helpers.clients import LogContext
 from agentao.validator.graders.helpers import preprocess_patch
 
 from logging import Logger
@@ -62,15 +64,26 @@ class FloatGrader(GraderInterface):
     def __init__(self, logger: Logger):
         self.logger = logger
 
-    def grade(self, submissions: List[MinerSubmission]) -> List[float]:
+    def grade(self, submissions: List[MinerSubmission], forward_pass_id: str) -> List[float]:
         overall_scores = []
+        float_grader_scores: List[FloatGraderScore] = []
 
         for submission in submissions:
             miner_output_score = _grade_miner_solution(submission, self.logger)
+            float_grader_scores.append(miner_output_score)
             if miner_output_score == EMPTY_PATCH_SCORE:
                 overall_scores.append(0.0)
             else:
                 overall_scores.append(_compute_overall_score(miner_output_score))
+
+        for (sub, score) in zip(submissions, float_grader_scores):
+            hk = sub.miner_hotkey
+            score = score.model_dump()
+            self.logger.info(f"{score}", extra=asdict(LogContext(
+                    log_type="lifecycle",
+                    event_type="float_score",
+                    additional_properties={"question_id": submission.problem.problem_uuid, "miner_hotkey": hk, "forward_pass_id": forward_pass_id}
+                )))
 
         return overall_scores
 
@@ -107,7 +120,8 @@ def _grade_miner_solution(miner_submission: MinerSubmission, logger: Logger) -> 
     cleaned_patch = preprocess_patch(repo, miner_solution.patch, logger)
 
     if cleaned_patch == "":
-        logger.info(f"Patch is empty, terminating early...")
+        hkey = miner_submission.miner_hotkey
+        logger.info(f"Patch by {hkey} is empty, terminating early...")
         return EMPTY_PATCH_SCORE
 
     solution_context = SOLUTION_CONTEXT_TMPL.format(
@@ -177,6 +191,6 @@ if __name__ == "__main__":
                 context_files=[]
             ),
             solution=sample_diff
-    )])
+    )], "some_forward_pass_id")
 
     logger.info(f"Grade response {scores}")

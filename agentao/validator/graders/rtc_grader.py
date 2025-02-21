@@ -1,3 +1,5 @@
+from dataclasses import asdict
+from agentao.helpers.clients import LogContext
 from agentao.validator.graders.abstract_grader import GraderInterface, MinerSubmission
 from logging import Logger
 from typing import List, Final
@@ -39,13 +41,18 @@ class RtcGrader(GraderInterface):
 
         return inv_prompt
     
-    def grade(self, submissions: List[MinerSubmission]) -> List[float]:
-        self.logger.info(f"Grading {len(submissions)} miners for RTC grader")
+    def grade(self, submissions: List[MinerSubmission], forward_pass_id: str) -> List[float]:
         problem_statements = [s.problem.problem_statement for s in submissions]
         inv_prompts = [self.inverse_prompt(s.solution.patch, s.repo) for s in submissions]
 
         _, _, F1 = bert_score.score(problem_statements, inv_prompts, lang='en')
 
-        self.logger.info(f"Graded miners:: {F1}")
+        hotkey_grade = [(s.miner_hotkey, f) for s, f in zip(submissions, F1.tolist())]
+        for hk, score in hotkey_grade:
+            self.logger.info(f"miner {hk} got RTC score of {score}", extra=asdict(LogContext(
+                    log_type="lifecycle",
+                    event_type="rtc_score",
+                    additional_properties={"grade": score, "miner_hotkey": hk, "forward_pass_id": forward_pass_id}
+                )))
 
         return F1.tolist()

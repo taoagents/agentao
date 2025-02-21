@@ -55,22 +55,21 @@ class TrueSkillGrader(GraderInterface):
         with open(parent_dir + "/ratings.json", "w") as f:
             json.dump({k: [v.mu, v.sigma] for k, v in self.ratings.items()}, f)
 
-    def grade(self, submissions: List[MinerSubmission]) -> List[float]:
-        self.logger.info(f"Grading {len(submissions)} miners")
+    def grade(self, submissions: List[MinerSubmission], forward_pass_id: str) -> List[float]:
         # Initialize any new miners
         for submission in submissions:
             if submission.miner_hotkey not in self.ratings:
                 self.ratings[submission.miner_hotkey] = self.env.create_rating()
 
         # Run float scores
-        float_scores = self.float_grader.grade(submissions)
+        float_scores = self.float_grader.grade(submissions, forward_pass_id)
         for index, submission in enumerate(submissions):
             float_grade_assigned = float_scores[index]
 
             self.logger.info(f"Graded miner {submission.miner_hotkey} with score of {float_grade_assigned} for question {submission.problem.problem_uuid}", extra=asdict(LogContext(
                 log_type="lifecycle",
                 event_type="solution_selected",
-                additional_properties={"question_id": submission.problem.problem_uuid, "grade": float_grade_assigned, "miner_hotkey": submission.miner_hotkey}
+                additional_properties={"question_id": submission.problem.problem_uuid, "grade": float_grade_assigned, "miner_hotkey": submission.miner_hotkey, "forward_pass_id": forward_pass_id}
             )))
 
         # We run the rating system thrice for steadier results when we first
@@ -101,7 +100,6 @@ class TrueSkillGrader(GraderInterface):
             )))
 
         self.save_state()
-        self.logger.info(f"Ratings: {ratings}")
 
         return ratings
 
