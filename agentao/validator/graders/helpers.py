@@ -83,7 +83,7 @@ def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> str:
         result_pylint_before = run_subprocess_command([*pylint_command, *touched_filenames])
 
         result_apply = run_subprocess_command(["git", "apply", temp_file.name])
-        logger.info(f"Results of apply command: {result_apply}")
+        logger.debug(f"Results of apply command: {result_apply}")
 
         result_pylint_after = run_subprocess_command([*pylint_command, *touched_filenames])
 
