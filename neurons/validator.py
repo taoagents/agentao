@@ -64,18 +64,6 @@ class Validator(BaseValidatorNeuron):
         use_mock_responses: bool = False,
     ):
         super(Validator, self).__init__(config=config)
-        # Setup logging
-        hotkey = self.wallet.hotkey.ss58_address
-        log_session_context = LogSessionContext(
-            actor_id=hotkey,
-            actor_type="validator",
-            is_mainnet=self.subtensor.network == "finney",
-            log_version=LOG_SESSION_CONTEXT,
-            session_id=''.join(random.choices(''.join(map(chr, range(33,127))), k=8)),
-            network=self.subtensor.network
-        )
-
-        self.logger: Logger = setup_logger(hotkey, log_session_context)
 
         self.logger.info("load_state()")
         self.load_state()
