@@ -77,7 +77,7 @@ class FloatGrader(GraderInterface):
             else:
                 overall_scores.append(_compute_overall_score(miner_output_score))
 
-        for (sub, score) in zip(submissions, overall_scores):
+        for (sub, score) in zip(submissions, float_grader_scores):
             hk = sub
             self.logger.info(f"Graded miners {hk}: {score}", extra=asdict(LogContext(
                     log_type="lifecycle",

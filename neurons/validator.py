@@ -101,7 +101,7 @@ class Validator(BaseValidatorNeuron):
         ]))
         
         response_time_scores = [exponential_decay(self.miner_request_timeout_mins * 60, t) for t in process_times]
-        for hk, rt, rts in (miner_hotkeys, response_times, response_time_scores):
+        for hk, rt, rts in (miner_hotkeys, process_times, response_time_scores):
             self.logger.info(f"Response time for miner {hk} is {rt} seconds -> score={rts}", extra=asdict(LogContext(
                 log_type="lifecycle",
                 event_type="response_time",
