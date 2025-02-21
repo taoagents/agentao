@@ -189,6 +189,6 @@ if __name__ == "__main__":
                 context_files=[]
             ),
             solution=sample_diff
-    )])
+    )], "some_forward_pass_id")
 
     logger.info(f"Grade response {scores}")
