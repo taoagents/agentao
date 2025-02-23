@@ -64,7 +64,7 @@ class FloatGrader(GraderInterface):
     def __init__(self, logger: Logger):
         self.logger = logger
 
-    def grade(self, submissions: List[MinerSubmission], forward_pass_id: str) -> List[float]:
+    def grade(self, submissions: List[MinerSubmission]) -> List[float]:
         overall_scores = []
         float_grader_scores: List[FloatGraderScore] = []
 
@@ -82,7 +82,10 @@ class FloatGrader(GraderInterface):
             self.logger.info(f"{score}", extra=asdict(LogContext(
                     log_type="lifecycle",
                     event_type="float_score",
-                    additional_properties={"question_id": submission.problem.problem_uuid, "miner_hotkey": hk, "forward_pass_id": forward_pass_id}
+                    additional_properties={
+                        "question_id": submission.problem.problem_uuid, 
+                        "miner_hotkey": hk
+                    }
                 )))
 
         return overall_scores
@@ -131,7 +134,7 @@ def _grade_miner_solution(miner_submission: MinerSubmission, logger: Logger) -> 
         affected_files=generated_problem_statement.prompt,  # todo: fix this
     )
 
-    logger.info("Making call to grade code...")
+    logger.debug("Making call to grade code...")
     completion = OPENAI_CLIENT.beta.chat.completions.parse(
         model='gpt-4o-mini',
         messages=[
@@ -143,7 +146,7 @@ def _grade_miner_solution(miner_submission: MinerSubmission, logger: Logger) -> 
         seed=42,
     )
     miner_output_score: FloatGraderScore = completion.choices[0].message.parsed
-    logger.info("Finished making call to grade code")
+    logger.debug("Finished making call to grade code")
 
     if miner_output_score is None:
         raise Exception("OpenAI did not grade miner output")
@@ -191,6 +194,6 @@ if __name__ == "__main__":
                 context_files=[]
             ),
             solution=sample_diff
-    )], "some_forward_pass_id")
+    )])
 
     logger.info(f"Grade response {scores}")

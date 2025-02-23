@@ -41,7 +41,7 @@ class RtcGrader(GraderInterface):
 
         return inv_prompt
     
-    def grade(self, submissions: List[MinerSubmission], forward_pass_id: str) -> List[float]:
+    def grade(self, submissions: List[MinerSubmission]) -> List[float]:
         problem_statements = [s.problem.problem_statement for s in submissions]
         inv_prompts = [self.inverse_prompt(s.solution.patch, s.repo) for s in submissions]
 
@@ -52,7 +52,7 @@ class RtcGrader(GraderInterface):
             self.logger.info(f"miner {hk} got RTC score of {score}", extra=asdict(LogContext(
                     log_type="lifecycle",
                     event_type="rtc_score",
-                    additional_properties={"grade": score, "miner_hotkey": hk, "forward_pass_id": forward_pass_id}
+                    additional_properties={"grade": score, "miner_hotkey": hk}
                 )))
 
         return F1.tolist()

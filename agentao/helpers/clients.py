@@ -14,14 +14,14 @@ load_dotenv()
 
 lifecycle_events = {
     "question_generated": ["question_id", "question_text"],
-    "miner_submitted": ["question_id", "miner_hotkey", "patch", "response_time", "forward_pass_id"],
-    "solution_selected": ["question_id", "grade", "miner_hotkey", "forward_pass_id"],
+    "miner_submitted": ["question_id", "miner_hotkey", "patch", "response_time"],
+    "solution_selected": ["question_id", "grade", "miner_hotkey"],
     "set_weights": [],
-    "float_score": ["question_id", "miner_hotkey", "forward_pass_id"],
-    "rtc_score": ["grade", "miner_hotkey", "forward_pass_id"],
-    "trueskill_score": ["question_id", "grade", "miner_hotkey", "forward_pass_id"],
-    "response_score": ["response_time", "miner_hotkey", "response_time_score", "forward_pass_id"],
-    "reward_calculated": ["miner_hotkey", "reward", "forward_pass_id"],
+    "float_score": ["question_id", "miner_hotkey"],
+    "rtc_score": ["grade", "miner_hotkey"],
+    "trueskill_score": ["question_id", "grade", "miner_hotkey"],
+    "response_score": ["response_time", "miner_hotkey", "response_time_score"],
+    "reward_calculated": ["miner_hotkey", "reward"],
 }
 
 @dataclass
