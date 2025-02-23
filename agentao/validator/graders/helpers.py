@@ -30,7 +30,7 @@ def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> str:
     repo_path: Relative repo path, eg pytest-dev/pytest
     patch: patch string
     """
-    logger.info(f"Preprocessing patch (length: {len(patch)} for repo {repo_path}...")
+    logger.debug(f"Preprocessing patch (length: {len(patch)} for repo {repo_path}...")
 
     OPENAI_CLIENT: Final[openai.Client] = openai.Client(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -39,10 +39,7 @@ def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> str:
     eval_repos_dir.mkdir(parents=True, exist_ok=True)
 
     clone_to_path = eval_repos_dir / repo_path
-    if clone_to_path.exists() and clone_to_path.is_dir():
-        print("Repo exists")
-    else:
-        print("Cloning repo...")
+    if not (clone_to_path.exists() and clone_to_path.is_dir()):
         Repo.clone_from(f"https://github.com/{repo_path}", clone_to_path)
 
     def run_subprocess_command(args: List[str]) -> CompletedProcess[str]:
@@ -52,7 +49,7 @@ def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> str:
             capture_output=True,
             text=True,
         )
-        logger.info(f"Output of `{' '.join(args)}`: {result}")
+        logger.debug(f"Output of `{' '.join(args)}`: {result}")
         return result
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".patch", delete=False) as temp_file:
@@ -62,20 +59,20 @@ def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> str:
         result = run_subprocess_command(["git", "apply", "--check", temp_file.name])
 
         if result.returncode != 0:
-            logger.info(f"Failed to apply patch with error: {result.stderr}")
+            logger.debug(f"Failed to apply patch with error: {result.stderr}")
             return ""
 
-        logger.info(f"Patch length before removing comments: {len(patch)}")
+        logger.debug(f"Patch length before removing comments: {len(patch)}")
         patch = remove_comments(patch)
 
-        logger.info(f"Patch length after removing comments, before removing docstrings: {len(patch)}")
+        logger.debug(f"Patch length after removing comments, before removing docstrings: {len(patch)}")
         patch = remove_docstrings(patch)
-        logger.info(f"Patch length after removing docstrings: {len(patch)}")
+        logger.debug(f"Patch length after removing docstrings: {len(patch)}")
         result_numstat = run_subprocess_command(["git", "apply", "--numstat", temp_file.name])
 
         # Parse output of git apply --numstat
         touched_filenames = [filename.split("\n")[0] for filename in result_numstat.stdout.split("\t")[2::2]]
-        logger.info(f"Touched filenames are: {touched_filenames}")
+        logger.debug(f"Touched filenames are: {touched_filenames}")
 
         # Check if any linter errors were introduced
         pylint_command = ["pylint", "--disable=import-error,no-member", "--errors-only"]
@@ -83,24 +80,24 @@ def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> str:
         result_pylint_before = run_subprocess_command([*pylint_command, *touched_filenames])
 
         result_apply = run_subprocess_command(["git", "apply", temp_file.name])
-        logger.info(f"Results of apply command: {result_apply}")
+        logger.debug(f"Results of apply command: {result_apply}")
 
         result_pylint_after = run_subprocess_command([*pylint_command, *touched_filenames])
 
         run_subprocess_command(["git", "reset", "--hard", "HEAD"])
 
         if result_pylint_before.returncode == 0 and result_pylint_after.returncode != 0:
-            logger.info("Patch introduces linter errors, terminating early...")
-            logger.info(f"Linter output: {result_pylint_after.stdout}")
+            logger.debug("Patch introduces linter errors, terminating early...")
+            logger.debug(f"Linter output: {result_pylint_after.stdout}")
             return ""
 
-        logger.info(f"Finished preprocessing patch for repo {repo_path}. New length: {len(patch)}")
+        logger.debug(f"Finished preprocessing patch for repo {repo_path}. New length: {len(patch)}")
 
     if patch == "":
-        logger.info(f"Patch is empty, terminating early...")
+        logger.debug(f"Patch is empty, terminating early...")
         return ""
 
-    logger.info(f"Making call to clean patch context......")
+    logger.debug(f"Making call to clean patch context......")
     patch = OPENAI_CLIENT.chat.completions.create(
         model="gpt-4",
         messages=[
@@ -108,7 +105,7 @@ def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> str:
             {"role": "user", "content": patch}
         ]
     ).choices[0].message.content
-    logger.info(f"Received cleaned patch, length {len(patch)}")
+    logger.debug(f"Received cleaned patch, length {len(patch)}")
 
     return patch
 

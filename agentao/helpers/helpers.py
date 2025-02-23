@@ -24,10 +24,10 @@ def clone_repo(author_name: str, repo_name: str, base_path: Path, logger: Logger
         clone_to_path = repos_dir / repo_name
         if clone_to_path.exists() and clone_to_path.is_dir():
             shutil.rmtree(clone_to_path)
-            logger.info(f"Directory {clone_to_path} has been removed.")
+            logger.debug(f"Directory {clone_to_path} has been removed.")
 
         Repo.clone_from(f"https://github.com/{author_name}/{repo_name}.git", clone_to_path)
-        logger.info(f"Repository cloned to {clone_to_path}")
+        logger.debug(f"Repository cloned to {clone_to_path}")
         return clone_to_path
     except Exception:
         logger.exception(f"Failed to clone repository")

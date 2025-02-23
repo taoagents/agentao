@@ -15,7 +15,13 @@ load_dotenv()
 lifecycle_events = {
     "question_generated": ["question_id", "question_text"],
     "miner_submitted": ["question_id", "miner_hotkey", "patch", "response_time"],
-    "solution_selected": ["question_id", "grade", "miner_hotkey"]
+    "solution_selected": ["question_id", "grade", "miner_hotkey"],
+    "set_weights": [],
+    "float_score": ["question_id", "miner_hotkey"],
+    "rtc_score": ["grade", "miner_hotkey"],
+    "trueskill_score": ["question_id", "grade", "miner_hotkey"],
+    "response_score": ["response_time", "miner_hotkey", "response_time_score"],
+    "reward_calculated": ["miner_hotkey", "reward"],
 }
 
 @dataclass
@@ -127,7 +133,9 @@ def validate_lifecycle_event(event_type: str, properties: Dict[str, Any]) -> boo
 @dataclass
 class LogContext:
     log_type: str = "internal" # internal or lifecycle
-    event_type: str = "" # can be anything. this is the event id recorded. if this is a lifecycle log it must be one of question_generated, miner_submitted, or solution_selected
+    # can be anything. this is the event id recorded. If this is a lifecycle log,
+    # it must be one of the ones in lifecycle_events
+    event_type: str = "" 
     flush_posthog: bool = False
     additional_properties: Optional[Dict[Any, Any]] = None
 
@@ -231,7 +239,7 @@ class AgentaoHandler(logging.Handler):
                         event=event_type,
                         properties=formatted_properties
                     )
-                
+                # Record the event in the dashboard
                 if event_type == "question_generated":
                     record_generated_question(
                         question_text=formatted_properties.get("question_text"),
@@ -239,7 +247,6 @@ class AgentaoHandler(logging.Handler):
                         submitting_hotkey=self._context.actor_id,
                         is_mainnet=self._context.is_mainnet
                     )
-                
                 elif event_type == "miner_submitted":
                     record_miner_submission(
                         question_id=formatted_properties.get("question_id"),
@@ -249,14 +256,13 @@ class AgentaoHandler(logging.Handler):
                         patch=formatted_properties.get("patch"),
                         response_time=float(formatted_properties.get("response_time"))
                     )
-                
                 elif event_type == "solution_selected":
                     record_solution_selected(
                         question_id=formatted_properties.get("question_id"),
                         miner_hotkey=formatted_properties.get("miner_hotkey"),
                         submitting_hotkey=self._context.actor_id,
                         is_mainnet=self._context.is_mainnet,
-                        grade=formatted_properties.get("grade")
+                        grade=formatted_properties.get("grade"),
                     )
 
             else:

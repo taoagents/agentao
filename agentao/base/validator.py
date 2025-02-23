@@ -19,6 +19,9 @@
 
 import argparse
 import asyncio
+from dataclasses import asdict
+from logging import Logger
+import random
 import bittensor as bt
 import copy
 import numpy as np
@@ -31,8 +34,12 @@ from agentao.base.neuron import BaseNeuron
 from agentao.base.utils.weight_utils import (
     convert_weights_and_uids_for_emit,
 )  # TODO: Replace when bittensor switches to numpy
+from agentao.helpers.clients import LogContext, LogSessionContext, setup_logger
 from agentao.mock import MockDendrite
 from agentao.utils.config import add_validator_args
+from neurons.constants import LOG_SESSION_CONTEXT
+
+U16_MAX = 65535
 
 
 def normalize(x, p=2, dim=0):
@@ -98,6 +105,19 @@ class BaseValidatorNeuron(BaseNeuron):
         self.is_running: bool = False
         self.thread: Union[threading.Thread, None] = None
         self.lock = asyncio.Lock()
+
+        # Setup logging
+        hotkey = self.wallet.hotkey.ss58_address
+        log_session_context = LogSessionContext(
+            actor_id=hotkey,
+            actor_type="validator",
+            is_mainnet=self.subtensor.network == "finney",
+            log_version=LOG_SESSION_CONTEXT,
+            session_id=''.join(random.choices(''.join(map(chr, range(33,127))), k=8)),
+            network=self.subtensor.network
+        )
+
+        self.logger: Logger = setup_logger(hotkey, log_session_context)
 
     def serve_axon(self):
         """Serve axon to enable external connections."""
@@ -256,8 +276,6 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.warning("More raw_weights than metagraph uids, truncating raw_weights.")
         raw_weights = raw_weights[:self.metagraph.uids.shape[0]]
 
-        # bt.logging.debug("raw_weights", raw_weights)
-        # bt.logging.debug("raw_weight_uids", str(self.metagraph.uids.tolist()))
         # Process the raw weights to final_weights via subtensor limitations.
         try:
             (
@@ -270,8 +288,6 @@ class BaseValidatorNeuron(BaseNeuron):
                 subtensor=self.subtensor,
                 metagraph=self.metagraph,
             )
-            # bt.logging.debug("processed_weights", processed_weights)
-            # bt.logging.debug("processed_weight_uids", processed_weight_uids)
         except Exception as e:
             bt.logging.error(f"Failed to process weights with exception: {e}")
             return
@@ -296,9 +312,20 @@ class BaseValidatorNeuron(BaseNeuron):
             version_key=self.spec_version,
         )
         if result is True:
-            bt.logging.info("set_weights on chain successfully!")
+            float_weights = [float(w) / float(U16_MAX) for w in uint_weights]
+            weights_log_info = []
+            for uid, weight in zip([int(uid) for uid in uint_uids], float_weights):
+                hotkey = self.metagraph.hotkeys[uid]
+                weights_log_info.append((hotkey, weight))
+
+            block = self.block
+
+            self.logger.info(f"{block}: {weights_log_info}", extra=asdict(LogContext(
+                    log_type="lifecycle",
+                    event_type="set_weights",
+                )))
         else:
-            bt.logging.error("set_weights failed", msg)
+            self.logger.error(f"set_weights failed {msg}")
 
     def resync_metagraph(self):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
@@ -348,7 +375,7 @@ class BaseValidatorNeuron(BaseNeuron):
             return
 
         if len(rewards) != len(uids):
-            bt.logging.exception("self.update_scores: Rewards are not the same size as UIDs list (THIS SHOULD NEVER HAPPEN!)")
+            self.logger.exception("self.update_scores: Rewards are not the same size as UIDs list (THIS SHOULD NEVER HAPPEN!)")
             return
         
         # Check if rewards contains NaN values.
