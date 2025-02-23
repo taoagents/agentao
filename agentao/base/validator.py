@@ -276,8 +276,6 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.warning("More raw_weights than metagraph uids, truncating raw_weights.")
         raw_weights = raw_weights[:self.metagraph.uids.shape[0]]
 
-        # bt.logging.debug("raw_weights", raw_weights)
-        # bt.logging.debug("raw_weight_uids", str(self.metagraph.uids.tolist()))
         # Process the raw weights to final_weights via subtensor limitations.
         try:
             (
@@ -290,8 +288,6 @@ class BaseValidatorNeuron(BaseNeuron):
                 subtensor=self.subtensor,
                 metagraph=self.metagraph,
             )
-            # bt.logging.debug("processed_weights", processed_weights)
-            # bt.logging.debug("processed_weight_uids", processed_weight_uids)
         except Exception as e:
             bt.logging.error(f"Failed to process weights with exception: {e}")
             return
@@ -322,12 +318,14 @@ class BaseValidatorNeuron(BaseNeuron):
                 hotkey = self.metagraph.hotkeys[uid]
                 weights_log_info.append((hotkey, weight))
 
-            self.logger.info(f"{weights_log_info}", extra=asdict(LogContext(
+            block = self.block
+
+            self.logger.info(f"{block}: {weights_log_info}", extra=asdict(LogContext(
                     log_type="lifecycle",
                     event_type="set_weights",
                 )))
         else:
-            self.logger.error("set_weights failed", msg)
+            self.logger.error(f"set_weights failed {msg}")
 
     def resync_metagraph(self):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
