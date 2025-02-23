@@ -106,10 +106,10 @@ class Validator(BaseValidatorNeuron):
         
         # Response time score
         response_time_scores = [exponential_decay(self.miner_request_timeout_mins * 60, t) for t in process_times]
-        for hk, rt, rts in (miner_hotkeys, process_times, response_time_scores):
+        for hk, rt, rts in zip(miner_hotkeys, process_times, response_time_scores):
             self.logger.info(f"Response time for miner {hk} is {rt} seconds -> score={rts}", extra=asdict(LogContext(
                 log_type="lifecycle",
-                event_type="response_time",
+                event_type="response_score",
                 additional_properties={
                     "response_time": rt, 
                     "miner_hotkey": hk, 
@@ -216,9 +216,9 @@ class Validator(BaseValidatorNeuron):
 
         author_name, repo_name = repo.split("/")
 
-        self.logger.info(f"Cloning repo {repo}...")
+        self.logger.debug(f"Cloning repo {repo}...")
         local_repo_dir = clone_repo(author_name, repo_name, current_dir.parent, logger=self.logger)
-        self.logger.info(f"Finished cloning repo {repo}")
+        self.logger.debug(f"Finished cloning repo {repo}")
 
         num_problems_to_gen = 1
         if self.use_mock_responses:
@@ -272,7 +272,7 @@ class Validator(BaseValidatorNeuron):
         finished_responses: List[IssueSolution] = []
         process_times: List[float] = []
 
-        self.logger.info("Checking which received patches are valid...")
+        self.logger.debug("Checking which received patches are valid...")
 
         for response in responses:
             if not response:

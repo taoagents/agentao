@@ -305,12 +305,6 @@ class BaseValidatorNeuron(BaseNeuron):
         bt.logging.debug("uint_weights", uint_weights)
         bt.logging.debug("uint_uids", uint_uids)
 
-        float_weights = [float(w) / float(U16_MAX) for w in uint_weights]
-        self.logger.info(f"{float_weights}", extra=asdict(LogContext(
-                log_type="lifecycle",
-                event_type="set_weights",
-            )))
-
         # Set the weights on chain via our subtensor connection.
         result, msg = self.subtensor.set_weights(
             wallet=self.wallet,
@@ -322,9 +316,18 @@ class BaseValidatorNeuron(BaseNeuron):
             version_key=self.spec_version,
         )
         if result is True:
-            bt.logging.info("set_weights on chain successfully!")
+            float_weights = [float(w) / float(U16_MAX) for w in uint_weights]
+            weights_log_info = []
+            for uid, weight in zip([int(uid) for uid in uint_uids], float_weights):
+                hotkey = self.metagraph.hotkeys[uid]
+                weights_log_info.append((hotkey, weight))
+
+            self.logger.info(f"{weights_log_info}", extra=asdict(LogContext(
+                    log_type="lifecycle",
+                    event_type="set_weights",
+                )))
         else:
-            bt.logging.error("set_weights failed", msg)
+            self.logger.error("set_weights failed", msg)
 
     def resync_metagraph(self):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
@@ -374,7 +377,7 @@ class BaseValidatorNeuron(BaseNeuron):
             return
 
         if len(rewards) != len(uids):
-            bt.logging.exception("self.update_scores: Rewards are not the same size as UIDs list (THIS SHOULD NEVER HAPPEN!)")
+            self.logger.exception("self.update_scores: Rewards are not the same size as UIDs list (THIS SHOULD NEVER HAPPEN!)")
             return
         
         # Check if rewards contains NaN values.
