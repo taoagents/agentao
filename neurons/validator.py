@@ -87,6 +87,7 @@ class Validator(BaseValidatorNeuron):
         # These are in seconds
         miner_hotkeys: List[str],
         process_times: List[float],
+        forward_pass_id: str,
     ) -> np.ndarray:
         """
         Validate the responses from the miners. This function should score the responses and return a list of rewards for each miner.
@@ -99,9 +100,9 @@ class Validator(BaseValidatorNeuron):
         ) for issue_solution, hk in zip(issue_solutions, miner_hotkeys)]
 
         # LLM evaluation of patch
-        llm_evals = np.array(self.grader.grade(miner_subs))
+        llm_evals = np.array(self.grader.grade(miner_subs, forward_pass_id))
         # RTC score for patch
-        rtc_scores = np.array(self.rtc_grader.grade(miner_subs))
+        rtc_scores = np.array(self.rtc_grader.grade(miner_subs, forward_pass_id))
         
         # Response time score
         response_time_scores = [exponential_decay(self.miner_request_timeout_mins * 60, t) for t in process_times]
@@ -113,6 +114,7 @@ class Validator(BaseValidatorNeuron):
                     "response_time": rt, 
                     "miner_hotkey": hk, 
                     "response_time_score": rts,
+                    "forward_pass_id": forward_pass_id,
                 }
             )))
         response_times = np.array(response_time_scores)
@@ -234,6 +236,7 @@ class Validator(BaseValidatorNeuron):
             additional_properties={
                 "question_text": problem.problem_statement, 
                 "question_id": problem.problem_uuid, 
+                "forward_pass_id": forward_pass_id,
             }
         )))
 
@@ -261,6 +264,7 @@ class Validator(BaseValidatorNeuron):
                         "question_id": problem.problem_uuid, 
                         "patch": r.patch, 
                         "response_time": r.dendrite.process_time, 
+                        "forward_pass_id": forward_pass_id,
                     }
                 )))
 
@@ -301,6 +305,7 @@ class Validator(BaseValidatorNeuron):
             finished_responses, 
             process_times,
             working_miner_uids,
+            forward_pass_id,
         )
 
         self.logger.reset_forward_pass_context()
@@ -313,6 +318,7 @@ class Validator(BaseValidatorNeuron):
         finished_responses: List[IssueSolution],
         process_times: List[float], 
         working_miner_uids: List[int], 
+        forward_pass_id: str,
     ) -> None:
         miner_hotkeys = [self.metagraph.hotkeys[uid] for uid in working_miner_uids]
         try:
@@ -322,6 +328,7 @@ class Validator(BaseValidatorNeuron):
                 finished_responses,
                 miner_hotkeys,
                 process_times,
+                forward_pass_id,
             )
         except Exception as e:
             self.logger.exception(f"Error calculating rewards: {e}")
@@ -331,7 +338,11 @@ class Validator(BaseValidatorNeuron):
             self.logger.info(f"Reward for miner {hk} is {reward}", extra=asdict(LogContext(
                 log_type="lifecycle",
                 event_type="reward_calculated",
-                additional_properties={"miner_hotkey": hk, "reward": reward}
+                additional_properties={
+                    "miner_hotkey": hk, 
+                    "reward": reward,
+                    "forward_pass_id": forward_pass_id,
+                }
             )))
 
         # reward the miners who succeeded

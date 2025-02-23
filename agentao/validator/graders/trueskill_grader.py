@@ -55,7 +55,7 @@ class TrueSkillGrader(GraderInterface):
         with open(parent_dir + "/ratings.json", "w") as f:
             json.dump({k: [v.mu, v.sigma] for k, v in self.ratings.items()}, f)
 
-    def grade(self, submissions: List[MinerSubmission]) -> List[float]:
+    def grade(self, submissions: List[MinerSubmission], forward_pass_id: str) -> List[float]:
         # Initialize any new miners
         for submission in submissions:
             if submission.miner_hotkey not in self.ratings:
@@ -73,6 +73,7 @@ class TrueSkillGrader(GraderInterface):
                     "question_id": submission.problem.problem_uuid,
                     "grade": float_grade_assigned,
                     "miner_hotkey": submission.miner_hotkey,
+                    "forward_pass_id": forward_pass_id,
                 }
             )))
 
@@ -104,6 +105,7 @@ class TrueSkillGrader(GraderInterface):
                     "question_id": submission.problem.problem_uuid,
                     "grade": miner_rating,
                     "miner_hotkey": submission.miner_hotkey,
+                    "forward_pass_id": forward_pass_id,
                 }
             )))
 

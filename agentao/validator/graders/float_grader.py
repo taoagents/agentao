@@ -64,7 +64,7 @@ class FloatGrader(GraderInterface):
     def __init__(self, logger: Logger):
         self.logger = logger
 
-    def grade(self, submissions: List[MinerSubmission]) -> List[float]:
+    def grade(self, submissions: List[MinerSubmission], forward_pass_id: str) -> List[float]:
         overall_scores = []
         float_grader_scores: List[FloatGraderScore] = []
 
@@ -84,7 +84,8 @@ class FloatGrader(GraderInterface):
                     event_type="float_score",
                     additional_properties={
                         "question_id": submission.problem.problem_uuid, 
-                        "miner_hotkey": hk
+                        "miner_hotkey": hk,
+                        "forward_pass_id": forward_pass_id,
                     }
                 )))
 
@@ -194,6 +195,6 @@ if __name__ == "__main__":
                 context_files=[]
             ),
             solution=sample_diff
-    )])
+    )], "some_forward_pass_id")
 
     logger.info(f"Grade response {scores}")

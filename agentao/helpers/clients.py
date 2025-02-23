@@ -82,7 +82,7 @@ def record_solution_selected(
             "miner_hotkey": miner_hotkey,
             "submitting_hotkey": submitting_hotkey,
             "is_mainnet": is_mainnet,
-            "grade": grade,
+            "grade": grade
         }
     }
     
