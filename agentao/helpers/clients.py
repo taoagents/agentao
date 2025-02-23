@@ -72,7 +72,6 @@ def record_solution_selected(
     submitting_hotkey: str,
     is_mainnet: bool,
     grade: int,
-    forward_pass_id: str,
     base_url: str = BASE_DASHBOARD_URL
 ) -> requests.Response:
     endpoint = f"{base_url}/api/trpc/question.recordSolutionSelected"
@@ -84,7 +83,6 @@ def record_solution_selected(
             "submitting_hotkey": submitting_hotkey,
             "is_mainnet": is_mainnet,
             "grade": grade,
-            "forward_pass_id": forward_pass_id,
         }
     }
     
@@ -135,7 +133,9 @@ def validate_lifecycle_event(event_type: str, properties: Dict[str, Any]) -> boo
 @dataclass
 class LogContext:
     log_type: str = "internal" # internal or lifecycle
-    event_type: str = "" # can be anything. this is the event id recorded. if this is a lifecycle log it must be one of question_generated, miner_submitted, or solution_selected
+    # can be anything. this is the event id recorded. If this is a lifecycle log,
+    # it must be one of the ones in lifecycle_events
+    event_type: str = "" 
     flush_posthog: bool = False
     additional_properties: Optional[Dict[Any, Any]] = None
 
@@ -239,7 +239,7 @@ class AgentaoHandler(logging.Handler):
                         event=event_type,
                         properties=formatted_properties
                     )
-                
+                # Record the event in the dashboard
                 if event_type == "question_generated":
                     record_generated_question(
                         question_text=formatted_properties.get("question_text"),
@@ -247,7 +247,6 @@ class AgentaoHandler(logging.Handler):
                         submitting_hotkey=self._context.actor_id,
                         is_mainnet=self._context.is_mainnet
                     )
-                
                 elif event_type == "miner_submitted":
                     record_miner_submission(
                         question_id=formatted_properties.get("question_id"),
@@ -257,7 +256,6 @@ class AgentaoHandler(logging.Handler):
                         patch=formatted_properties.get("patch"),
                         response_time=float(formatted_properties.get("response_time"))
                     )
-                
                 elif event_type == "solution_selected":
                     record_solution_selected(
                         question_id=formatted_properties.get("question_id"),
@@ -265,7 +263,6 @@ class AgentaoHandler(logging.Handler):
                         submitting_hotkey=self._context.actor_id,
                         is_mainnet=self._context.is_mainnet,
                         grade=formatted_properties.get("grade"),
-                        forward_pass_id=formatted_properties.get("forward_pass_id")
                     )
 
             else:
