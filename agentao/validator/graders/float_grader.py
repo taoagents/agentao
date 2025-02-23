@@ -156,7 +156,7 @@ def _grade_miner_solution(miner_submission: MinerSubmission, logger: Logger) -> 
 
 
 class MockFloatGrader(FloatGrader):
-    def grade(self, submissions: List[MinerSubmission]) -> List[float]:
+    def grade(self, submissions: List[MinerSubmission], _forward_pass_id: str) -> List[float]:
         return [random.uniform(0, 1) for _ in submissions]
 
 if __name__ == "__main__":

@@ -62,7 +62,7 @@ class TrueSkillGrader(GraderInterface):
                 self.ratings[submission.miner_hotkey] = self.env.create_rating()
 
         # Run float scores
-        float_scores = self.float_grader.grade(submissions)
+        float_scores = self.float_grader.grade(submissions, forward_pass_id)
         for index, submission in enumerate(submissions):
             float_grade_assigned = float_scores[index]
 
