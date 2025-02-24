@@ -14,6 +14,8 @@ pushd $REPO_ROOT > /dev/null || exit 1
 sleep_duration_s=300  # Sleep 5 minutes between update checks
 branch="$(git branch --show-current)"
 auto_update_enabled=${AGENTAO_VALIDATOR_AUTO_UPDATE:-1}
+stash_msg="autostash-pre-rebase"
+stash_ref=""
 
 DEFAULT_PROC_NAME="agentao-validator"  # in absence of --name flag
 
@@ -69,6 +71,17 @@ function is_validator_running() {
   pm2 jlist | jq -e "if length > 0 then .[] | select(.name == \"$proc_name\" and .pm2_env.status == \"online\") else empty end" > /dev/null
 }
 
+function run-post-update-processes() {
+  python3 -m pip install -e .  # Reinstall in case of updated dependencies
+
+  # Stop current out-of-date process
+  if is_validator_running; then
+    echo "Stopping current validator process ($proc_name)..."
+    pm2 stop "$proc_name"
+    echo "$proc_name stopped."
+  fi
+}
+
 ################## Construct pm2_start_command ############################
 pm2_args=()
 validator_args=()
@@ -110,26 +123,56 @@ while true; do
   remote_version=$(git rev-parse origin/"$branch")
 
   local_version=$(git rev-parse "$branch")
+
+  # Is auto-update on and is there a corresponding branch on origin?
   if [[ $auto_update_enabled = 1 ]] && ! git merge-base --is-ancestor origin/"$branch" "$branch"; then
     echo "Local code is out of date (sha $local_version), attempting update to ($remote_version)..."
 
+    # Unstaged changes exist, apply rebase + stash
     if ! git diff --quiet || ! git diff --cached --quiet; then
-      echo "ERROR: Auto-update will not work because you have unstaged changes. Please stash or commit them and update manually via \`git pull\`.  You can do so via the commands below:"
-      echo "\`\`\`"
-      echo "git stash push"
-      echo "git pull --rebase"
-      echo "git stash pop"
-      echo "\`\`\`"
+      echo "WARNING: Unstaged changes detected. Attempting to update via auto-stashing the changes and reapplying them..."
+
+      # Attempt to stash and auto-update
+      stash_ref=$(git stash push -m "$STASH_MSG")
+      pre_rebase_commit="$(git rev-parse HEAD)"
+
+      if git rebase --quiet origin/"$branch" &> /dev/null; then  # Rebase command succeeded
+
+        if [ -n "$STASH_REF" ]; then
+
+          if git stash pop; then
+            # Stash applied successfully
+            run-post-update-processes
+            echo "Unstaged changes restored successfully, and code has been updated..."
+
+          else
+            # Stash failed to apply, revert to previous state and request manual changes
+            git reset --hard "$pre_rebase_commit"
+            if [ -n "$STASH_REF" ]; then
+              git stash pop
+            fi
+            echo "Failed to apply stashed changes due to unstaged changes causing merge conflicts. Please update manually via \`git pull\`. Running with old code..."
+          fi
+
+        fi
+
+      else  # Rebase command failed, revert back to previous state with unstaged changes
+        git rebase --abort
+        git reset --hard "$pre_rebase_commit"
+
+        if [ -n "$STASH_REF" ]; then
+          git stash pop
+        fi
+
+        echo "ERROR: Auto-update failed. Please update manually via \`git pull\`. Running with old code..."
+      fi
+
+    # No unstaged changed, apply rebase directly
     elif git rebase --quiet origin/"$branch" &> /dev/null; then
       echo "Updated branch successfully"
-      python3 -m pip install -e .  # Reinstall in case of updated dependencies
+      run-post-update-processes
 
-      # Stop current out-of-date process
-      if is_validator_running; then
-        echo "Stopping current validator process ($proc_name)..."
-        pm2 stop "$proc_name"
-        echo "$proc_name stopped."
-      fi
+    # Applying rebase directly failed
     else
       git rebase --abort
       echo "ERROR: Auto-update failed. Please update manually via \`git pull\`"
@@ -138,6 +181,7 @@ while true; do
     echo "Code is up to date. Running commit $(git rev-parse HEAD) on branch \`$branch\`"
   fi
 
+  # Restart validator process if needed
   if ! is_validator_running; then
     echo "Starting validator via command: '$pm2_start_command'"
     eval "$pm2_start_command"
