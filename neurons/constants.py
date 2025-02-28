@@ -11,7 +11,6 @@ LOG_SESSION_CONTEXT: int = 20
 ## Validator eval constants
 LLM_EVAL_MULT: Final[float] = 8.5
 PROCESS_TIME_MULT: Final[float] = 0.5
-RTC_SCORE_MULT: Final[float] = 1.0
 
 class ValidatorDefaults:
     CODINGTASK_TIMEOUT_MINS = 30.
