@@ -1,8 +1,9 @@
 from dataclasses import asdict
 from agentao.helpers.clients import LogContext
+from agentao.helpers.helpers import calculate_price
 from agentao.validator.graders.abstract_grader import GraderInterface, MinerSubmission
 from logging import Logger
-from typing import List, Final
+from typing import List, Final, Tuple
 import openai
 import os
 from pydantic import BaseModel
@@ -29,21 +30,35 @@ class RtcGrader(GraderInterface):
     def __init__(self, logger: Logger):
         self.logger = logger
 
-    def inverse_prompt(self, patch: str, repo: str) -> str:
+    def inverse_prompt(self, patch: str, repo: str) -> Tuple[str, float]:
         OPENAI_CLIENT: Final[openai.Client] = openai.Client(api_key=os.getenv("OPENAI_API_KEY"))
-        inv_prompt = OPENAI_CLIENT.beta.chat.completions.parse(
+        completion = OPENAI_CLIENT.beta.chat.completions.parse(
             model='gpt-4o-mini',
             messages=[
                 {"role": "system", "content": RTC_PROMPT.format(patch=patch, repo=repo)},
             ],
             response_format=RtcResponseFormat,
-        ).choices[0].message.parsed.inverse_prompt
+        )
+        inv_prompt = completion.choices[0].message.parsed.inverse_prompt
 
-        return inv_prompt
+        prompt_tokens, completion_tokens = completion.usage.prompt_tokens, completion.usage.completion_tokens
+        cost = calculate_price("gpt-4o-mini", prompt_tokens, completion_tokens)
+
+        return (inv_prompt, cost)
     
     def grade(self, submissions: List[MinerSubmission], forward_pass_id: str) -> List[float]:
         problem_statements = [s.problem.problem_statement for s in submissions]
-        inv_prompts = [self.inverse_prompt(s.solution.patch, s.repo) for s in submissions]
+        inv_prompts = []
+        total_cost = 0
+        for s in submissions:
+            inv_prompt, cost = self.inverse_prompt(s.solution.patch, s.repo)
+            inv_prompts.append(inv_prompt)
+            total_cost += cost
+
+        self.logger.info(f"RTC generate: {total_cost}", extra=asdict(LogContext(
+            log_type="lifecycle",
+            event_type="openai_cost",
+        )))
 
         _, _, F1 = bert_score.score(problem_statements, inv_prompts, lang='en')
 
