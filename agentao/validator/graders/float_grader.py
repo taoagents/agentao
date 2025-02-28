@@ -80,7 +80,7 @@ class FloatGrader(GraderInterface):
             else:
                 overall_scores.append(_compute_overall_score(miner_output_score))
 
-        logger.info(f"Float grader cost: {total_cost}", extra=asdict(LogContext(
+        self.logger.info(f"Float grader cost: {total_cost}", extra=asdict(LogContext(
             log_type="lifecycle",
             event_type="openai_cost",
         )))
