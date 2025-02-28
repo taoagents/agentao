@@ -24,6 +24,8 @@ import tiktoken
 from agentao.helpers.classes import EmbeddedFile, FilePair, IngestionHeuristics
 from logging import Logger
 
+from agentao.helpers.clients import LogContext
+
 OPENAI_CLIENT: Final[openai.Client] = openai.Client(api_key=os.getenv("OPENAI_API_KEY"))
 
 SAMPLE_INGESTION_HEURISTICS = IngestionHeuristics(
@@ -180,7 +182,16 @@ def get_all_filepairs(
     filepairs_from_cache = load_filepairs_from_cache(cache_path=cache_path)
 
     if filepairs_from_cache and len(filepairs_from_cache) > 0 and refresh == False:
+        logger.info(f"Generated filepairs from cache", extra=asdict(LogContext(
+            log_type="lifecycle",
+            event_type="openai_cost",
+        )))
         return filepairs_from_cache
+    
+    logger.info(f"filepairs not found in cache", extra=asdict(LogContext(
+            log_type="lifecycle",
+            event_type="openai_cost",
+        )))
     
     repo_structure = walk_repository(local_repo)
 

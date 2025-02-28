@@ -1,3 +1,4 @@
+from dataclasses import asdict
 import os
 import re
 import subprocess
@@ -10,6 +11,9 @@ import openai
 from git import Repo
 
 from logging import Logger
+
+from agentao.helpers.clients import LogContext
+from agentao.helpers.helpers import calculate_price
 
 CLEANER_SYSTEM_PROMPT: Final[str] = """
 Instruction:
@@ -97,15 +101,24 @@ def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> str:
         logger.debug(f"Patch is empty, terminating early...")
         return ""
 
-    logger.debug(f"Making call to clean patch context......")
-    patch = OPENAI_CLIENT.chat.completions.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": CLEANER_SYSTEM_PROMPT},
-            {"role": "user", "content": patch}
-        ]
-    ).choices[0].message.content
-    logger.debug(f"Received cleaned patch, length {len(patch)}")
+    # logger.debug(f"Making call to clean patch context......")
+    # completion = OPENAI_CLIENT.chat.completions.create(
+    #     model="gpt-4o-mini",
+    #     messages=[
+    #         {"role": "system", "content": CLEANER_SYSTEM_PROMPT},
+    #         {"role": "user", "content": patch}
+    #     ]
+    # )
+    # patch = completion.choices[0].message.content
+    # logger.debug(f"Received cleaned patch, length {len(patch)}")
+
+    # prompt_tokens, completion_tokens = completion.usage.prompt_tokens, completion.usage.completion_tokens
+    # cost = calculate_price("gpt-4o-mini", prompt_tokens, completion_tokens)
+
+    # logger.info(f"preprocess patch cost: {cost}", extra=asdict(LogContext(
+    #         log_type="lifecycle",
+    #         event_type="openai_cost",
+    #     )))
 
     return patch
 

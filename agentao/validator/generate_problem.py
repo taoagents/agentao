@@ -1,5 +1,5 @@
 import os
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from textwrap import dedent
 from typing import List, Final, Union, Callable
@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from agentao.helpers.classes import FilePair, GeneratedProblemStatement, \
     ValidatorModelStats, IngestionHeuristics
+from agentao.helpers.clients import LogContext
 from agentao.helpers.helpers import calculate_price
 from agentao.validator.ingest import get_all_filepairs
 
@@ -115,7 +116,8 @@ def generate_problems_for_single_repo(
     # Generate one problem statement, with prompt and model to benchmark
     problem_statements_list = generate_problem_statements(
         filepairs=file_pairs,
-        parameters=problem_generation_params
+        parameters=problem_generation_params,
+        logger=logger
     )
     return problem_statements_list
 
@@ -123,7 +125,8 @@ def generate_problems_for_single_repo(
 
 def generate_problem_statements(
     filepairs: List[FilePair],
-    parameters: ProblemGeneratorParameters
+    parameters: ProblemGeneratorParameters,
+    logger: Logger
 ) -> List[GeneratedProblemStatement]:
     selected_file_pair = parameters.filepair_selection_logic(filepairs)
     prompt_text = parameters.prompt_template.render(
@@ -152,6 +155,11 @@ def generate_problem_statements(
     parsed_response = completion.choices[0].message.parsed.generated_problem_statements
     prompt_tokens, completion_tokens = completion.usage.prompt_tokens, completion.usage.completion_tokens
     cost = calculate_price(model, prompt_tokens, completion_tokens)
+
+    logger.info(f"Generated problem statement for {cost} with {model}", extra=asdict(LogContext(
+            log_type="lifecycle",
+            event_type="openai_cost",
+        )))
 
     # Generate a UUID for each problem statement
     problem_uuid = str(uuid.uuid4())

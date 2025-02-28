@@ -3,12 +3,13 @@ import os
 import random
 from statistics import mean
 from textwrap import dedent
-from typing import Final, List
+from typing import Final, List, Tuple
 
 import openai
 from pydantic import BaseModel
 
 from agentao.helpers.classes import GeneratedProblemStatement, IssueSolution, ValidatorModelStats
+from agentao.helpers.helpers import calculate_price
 from agentao.validator.graders.abstract_grader import MinerSubmission, GraderInterface
 from agentao.helpers.clients import LogContext
 from agentao.validator.graders.helpers import preprocess_patch
@@ -68,13 +69,21 @@ class FloatGrader(GraderInterface):
         overall_scores = []
         float_grader_scores: List[FloatGraderScore] = []
 
+        total_cost = 0.0
+
         for submission in submissions:
-            miner_output_score = _grade_miner_solution(submission, self.logger)
+            (miner_output_score, cost) = _grade_miner_solution(submission, self.logger)
+            total_cost += cost
             float_grader_scores.append(miner_output_score)
             if miner_output_score == EMPTY_PATCH_SCORE:
                 overall_scores.append(0.0)
             else:
                 overall_scores.append(_compute_overall_score(miner_output_score))
+
+        self.logger.info(f"Float grader cost: {total_cost}", extra=asdict(LogContext(
+            log_type="lifecycle",
+            event_type="openai_cost",
+        )))
 
         for (sub, score) in zip(submissions, float_grader_scores):
             hk = sub.miner_hotkey
@@ -115,7 +124,7 @@ def _compute_overall_score(miner_output_score: FloatGraderScore) -> float:
     )
 
 
-def _grade_miner_solution(miner_submission: MinerSubmission, logger: Logger) -> FloatGraderScore:
+def _grade_miner_solution(miner_submission: MinerSubmission, logger: Logger) -> Tuple[FloatGraderScore, float]:
     repo = miner_submission.repo
     generated_problem_statement = miner_submission.problem
     miner_solution = miner_submission.solution
@@ -126,7 +135,7 @@ def _grade_miner_solution(miner_submission: MinerSubmission, logger: Logger) -> 
     if cleaned_patch == "":
         hkey = miner_submission.miner_hotkey
         logger.info(f"Patch by {hkey} is empty, terminating early...")
-        return EMPTY_PATCH_SCORE
+        return (EMPTY_PATCH_SCORE, 0.0)
 
     solution_context = SOLUTION_CONTEXT_TMPL.format(
         problem_statement=generated_problem_statement.problem_statement,
@@ -146,13 +155,16 @@ def _grade_miner_solution(miner_submission: MinerSubmission, logger: Logger) -> 
         temperature=0,
         seed=42,
     )
+    prompt_tokens, completion_tokens = completion.usage.prompt_tokens, completion.usage.completion_tokens
+    cost = calculate_price("gpt-4o-mini", prompt_tokens, completion_tokens)
+
     miner_output_score: FloatGraderScore = completion.choices[0].message.parsed
     logger.debug("Finished making call to grade code")
 
     if miner_output_score is None:
         raise Exception("OpenAI did not grade miner output")
 
-    return miner_output_score
+    return (miner_output_score, cost)
 
 
 class MockFloatGrader(FloatGrader):

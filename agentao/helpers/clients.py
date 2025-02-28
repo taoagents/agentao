@@ -22,6 +22,7 @@ lifecycle_events = {
     "trueskill_score": ["question_id", "grade", "miner_hotkey"],
     "response_score": ["response_time", "miner_hotkey", "response_time_score"],
     "reward_calculated": ["miner_hotkey", "reward"],
+    "openai_cost": [],
 }
 
 @dataclass
