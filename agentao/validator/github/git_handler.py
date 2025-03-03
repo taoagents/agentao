@@ -68,6 +68,12 @@ class GitHubIssueHandler:
             is_issue_good = False
             required_tests: List[str] = []
 
+            # TODO: Amend check to check for Open PRs only
+            if any(tl_event.event == "cross-referenced" for tl_event in issue.get_timeline()):
+                print(f"Skipping issue {issue} because it has existing PRs")
+                continue
+
+            # Ignore issues which are pull requests (get_issues call returns both)
             if issue.pull_request:
                 continue
 
