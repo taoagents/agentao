@@ -12,6 +12,7 @@
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
+import os
 
 from dotenv import load_dotenv
 
@@ -49,6 +50,10 @@ from neurons.constants import LLM_EVAL_MULT, PROCESS_TIME_MULT, ValidatorDefault
 from neurons.constants import UPLOAD_ISSUE_ENDPOINT
 
 
+# TODO: Also check if token is valid
+IS_RUNNING_OPEN_ISSUES = "GITHUB_TOKEN" in os.environ
+
+
 class Validator(BaseValidatorNeuron):
     """
     Your validator neuron class. You should use this class to define your validator's behavior. In particular, you should replace the forward function with your own logic.
@@ -80,7 +85,8 @@ class Validator(BaseValidatorNeuron):
             self.grader = TrueSkillGrader(logger=self.logger)
 
         # TODO: Make it mockable
-        self.github_handler = GitHubIssueHandler()
+        if IS_RUNNING_OPEN_ISSUES:
+            self.github_handler = GitHubIssueHandler()
 
     async def calculate_rewards(
         self,
@@ -353,6 +359,9 @@ class Validator(BaseValidatorNeuron):
         """
         # TODO: Should probably check if this specific validator is allowed to
         # send organics
+        if not IS_RUNNING_OPEN_ISSUES:
+            return
+
         forward_pass_id = str(uuid.uuid4())
         self.logger.add_forward_pass_context(forward_pass_id)
         self.logger.debug("Starting organic forward pass...")
