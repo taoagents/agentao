@@ -360,6 +360,7 @@ class Validator(BaseValidatorNeuron):
         # TODO: Should probably check if this specific validator is allowed to
         # send organics
         if not IS_RUNNING_OPEN_ISSUES:
+            self.calculate_organic_rewards()
             return
 
         forward_pass_id = str(uuid.uuid4())
@@ -383,7 +384,6 @@ class Validator(BaseValidatorNeuron):
 
         axons = [self.metagraph.axons[uid] for uid in miner_uids]
 
-        # TODO: do this transparently
         open_issue: Optional[GitHubOpenIssue] = self.github_handler.select_random_issue()
         if not open_issue:
             self.calculate_organic_rewards()
