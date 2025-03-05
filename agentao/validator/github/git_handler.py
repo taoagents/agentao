@@ -139,7 +139,6 @@ class GitHubIssueHandler:
         for repo in SUPPORTED_OPEN_REPOS:
             repo = self.repo_map[repo]
             pulls = repo.get_pulls(state='open', sort='created', base=repo.default_branch)
-            print(pulls)
 
             # Check open PRs that have been accepted
             for pull in pulls:

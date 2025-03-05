@@ -360,7 +360,7 @@ class Validator(BaseValidatorNeuron):
         # TODO: Should probably check if this specific validator is allowed to
         # send organics
         if not IS_RUNNING_OPEN_ISSUES:
-            self.calculate_organic_rewards()
+            self.logger.info("Skipping organic forward pass...")
             return
 
         forward_pass_id = str(uuid.uuid4())

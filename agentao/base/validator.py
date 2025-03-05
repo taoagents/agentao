@@ -263,8 +263,8 @@ class BaseValidatorNeuron(BaseNeuron):
                 f"Scores contain NaN values. This may be due to a lack of responses from miners, or a bug in your reward functions."
             )
 
-        CLOSED_PR_PCT = 0.95
-        OPEN_PR_PCT = 0.05
+        CLOSED_PR_PCT = 0.97
+        OPEN_PR_PCT = 0.03
         # Calculate the average reward for each uid across non-zero values.
         # Replace any NaN values with 0.
         # Compute the norm of the scores
