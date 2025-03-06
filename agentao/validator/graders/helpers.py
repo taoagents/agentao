@@ -84,11 +84,7 @@ def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> Tuple[str, O
 
         result_pylint_after = run_subprocess_command([*pylint_command, *touched_filenames])
 
-        try:
-            test_outcomes_after: Dict[str, bool] = run_tests(clone_to_path, logger)
-        except Exception as e:
-            logger.info(f"Failed to run tests with error: {e}")
-            test_outcomes_after = None
+        test_outcomes_after: Dict[str, bool] = run_tests(clone_to_path, logger)
 
         run_subprocess_command(["git", "reset", "--hard", "HEAD"])
 
