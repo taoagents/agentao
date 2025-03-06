@@ -125,7 +125,7 @@ class Miner(BaseMinerNeuron):
             if repo not in SUPPORTED_REPOS:
                 raise ValueError(
                     f"Repo {repo} is not configured on miner. "
-                    f"Please provide an environment setup file in REPO_TO_ENVIRONMENT_INFO"
+                    f"Please provide an environment setup file in REPO_TO_ENV_SETUP"
                 )
 
             repo_environment_info = REPO_TO_ENVIRONMENT_INFO[repo]

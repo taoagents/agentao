@@ -33,23 +33,11 @@ class RepoEnvironmentInfo(BaseModel):
         )
 
 
-SUPPORTED_SWEBENCH_REPOS: Final[List[str]] = [
+SUPPORTED_REPOS: Final[List[str]] = [
     "mwaskom/seaborn",
     "pytest-dev/pytest",
 ]
 
-SUPPORTED_OPEN_REPOS: Final[List[str]] = [
-    "taoagents/taogod_terminal",
-]
-
-SUPPORTED_REPOS: Final[List[str]] = SUPPORTED_SWEBENCH_REPOS + SUPPORTED_OPEN_REPOS
-
 REPO_TO_ENVIRONMENT_INFO: Final[Dict[str, RepoEnvironmentInfo]] = {
-    **{repo: RepoEnvironmentInfo.from_swebench(repo) for repo in SUPPORTED_SWEBENCH_REPOS},
-    **{
-        "taoagents/taogod_terminal": RepoEnvironmentInfo(
-            install_command="python3 -m pip install -e .",
-            python_version="3.10"
-        )
-    }
+    repo: RepoEnvironmentInfo.from_swebench(repo) for repo in SUPPORTED_REPOS
 }

@@ -4,10 +4,9 @@ from agentao.helpers.classes import IngestionHeuristics
 
 NO_MINER_RESPONSE_SCORE: float = 0.005
 UPLOAD_ISSUE_ENDPOINT: Final[str] = "https://gh-issue-pull.onrender.com/upload_issue"
-OPEN_ISSUE_ENDPOINT: Final[str] = "https://gh-issue-pull.onrender.com/open_issue"
 DOCKER_CACHE_LEVEL: Final[str] = "instance"
 
-LOG_SESSION_CONTEXT: int = 21
+LOG_SESSION_CONTEXT: int = 20
 
 ## Validator eval constants
 LLM_EVAL_MULT: Final[float] = 9.0

@@ -1,15 +1,19 @@
-import json
+from dataclasses import asdict
 import os
 import re
 import subprocess
 import tempfile
-from logging import Logger
 from pathlib import Path
 from subprocess import CompletedProcess
-from typing import Final, List, Optional, Tuple, Dict
+from typing import Final, List
 
 import openai
 from git import Repo
+
+from logging import Logger
+
+from agentao.helpers.clients import LogContext
+from agentao.helpers.helpers import calculate_price
 
 CLEANER_SYSTEM_PROMPT: Final[str] = """
 Instruction:
@@ -23,14 +27,14 @@ A patch file, containing a cleaned version of the input
 """
 
 
-def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> Tuple[str, Optional[Dict[str, bool]]]:
+def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> str:
     """
     Verify if patch applies, and strip comments from it
 
     repo_path: Relative repo path, eg pytest-dev/pytest
     patch: patch string
     """
-    logger.info(f"Preprocessing patch (length: {len(patch)} for repo {repo_path}...")
+    logger.debug(f"Preprocessing patch (length: {len(patch)} for repo {repo_path}...")
 
     OPENAI_CLIENT: Final[openai.Client] = openai.Client(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -49,7 +53,7 @@ def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> Tuple[str, O
             capture_output=True,
             text=True,
         )
-        logger.info(f"Output of `{' '.join(args)}`: {result}")
+        logger.debug(f"Output of `{' '.join(args)}`: {result}")
         return result
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".patch", delete=False) as temp_file:
@@ -59,20 +63,20 @@ def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> Tuple[str, O
         result = run_subprocess_command(["git", "apply", "--check", temp_file.name])
 
         if result.returncode != 0:
-            logger.info(f"Failed to apply patch with error: {result.stderr}")
-            return "", None
+            logger.debug(f"Failed to apply patch with error: {result.stderr}")
+            return ""
 
-        logger.info(f"Patch length before removing comments: {len(patch)}")
+        logger.debug(f"Patch length before removing comments: {len(patch)}")
         patch = remove_comments(patch)
 
-        logger.info(f"Patch length after removing comments, before removing docstrings: {len(patch)}")
+        logger.debug(f"Patch length after removing comments, before removing docstrings: {len(patch)}")
         patch = remove_docstrings(patch)
-        logger.info(f"Patch length after removing docstrings: {len(patch)}")
+        logger.debug(f"Patch length after removing docstrings: {len(patch)}")
         result_numstat = run_subprocess_command(["git", "apply", "--numstat", temp_file.name])
 
         # Parse output of git apply --numstat
         touched_filenames = [filename.split("\n")[0] for filename in result_numstat.stdout.split("\t")[2::2]]
-        logger.info(f"Touched filenames are: {touched_filenames}")
+        logger.debug(f"Touched filenames are: {touched_filenames}")
 
         # Check if any linter errors were introduced
         pylint_command = ["pylint", "--disable=import-error,no-member", "--errors-only"]
@@ -80,50 +84,44 @@ def preprocess_patch(repo_path: str, patch: str, logger: Logger) -> Tuple[str, O
         result_pylint_before = run_subprocess_command([*pylint_command, *touched_filenames])
 
         result_apply = run_subprocess_command(["git", "apply", temp_file.name])
-        logger.info(f"Results of apply command: {result_apply}")
+        logger.debug(f"Results of apply command: {result_apply}")
 
         result_pylint_after = run_subprocess_command([*pylint_command, *touched_filenames])
-
-        try:
-            test_outcomes_after: Dict[str, bool] = run_tests(clone_to_path, logger)
-        except Exception as e:
-            logger.info(f"Failed to run tests with error: {e}")
-            test_outcomes_after = None
 
         run_subprocess_command(["git", "reset", "--hard", "HEAD"])
 
         if result_pylint_before.returncode == 0 and result_pylint_after.returncode != 0:
-            logger.info("Patch introduces linter errors, terminating early...")
-            logger.info(f"Linter output: {result_pylint_after.stdout}")
-            return "", None
+            logger.debug("Patch introduces linter errors, terminating early...")
+            logger.debug(f"Linter output: {result_pylint_after.stdout}")
+            return ""
 
-        logger.info(f"Finished preprocessing patch for repo {repo_path}. New length: {len(patch)}")
+        logger.debug(f"Finished preprocessing patch for repo {repo_path}. New length: {len(patch)}")
 
     if patch == "":
-        logger.info(f"Patch is empty, terminating early...")
-        return "", None
+        logger.debug(f"Patch is empty, terminating early...")
+        return ""
 
-    return patch, test_outcomes_after
+    # logger.debug(f"Making call to clean patch context......")
+    # completion = OPENAI_CLIENT.chat.completions.create(
+    #     model="gpt-4o-mini",
+    #     messages=[
+    #         {"role": "system", "content": CLEANER_SYSTEM_PROMPT},
+    #         {"role": "user", "content": patch}
+    #     ]
+    # )
+    # patch = completion.choices[0].message.content
+    # logger.debug(f"Received cleaned patch, length {len(patch)}")
 
-def run_tests(repo_dir: Path, logger: Logger) -> Dict[str, bool]:
-    # TODO: Use package environment to run tests
-    args = ["pytest", "--json-report", "-s", str(repo_dir)]
-    result = subprocess.run(
-        args,
-        cwd=str(Path.cwd()),
-        capture_output=True,
-        text=True,
-    )
-    logger.info(f"Output of `{' '.join(args)}`: {result}")
-    with open(".report.json", "r") as f:
-        report_data = json.load(f)
+    # prompt_tokens, completion_tokens = completion.usage.prompt_tokens, completion.usage.completion_tokens
+    # cost = calculate_price("gpt-4o-mini", prompt_tokens, completion_tokens)
 
-    test_outcomes: Dict[str, bool] = {}
-    for test in report_data["tests"]:
-        did_test_pass = test["outcome"] == "passed"
+    # logger.info(f"preprocess patch cost: {cost}", extra=asdict(LogContext(
+    #         log_type="lifecycle",
+    #         event_type="openai_cost",
+    #     )))
 
-        test_outcomes[test["keywords"][0]] = did_test_pass
-    return test_outcomes
+    return patch
+
 
 def remove_comments(patch_content: str) -> str:
     """
