@@ -40,7 +40,7 @@ from agentao.helpers.clients import LogContext
 from agentao.helpers.constants import SUPPORTED_VALIDATOR_MODELS
 from agentao.helpers.helpers import clone_repo, exponential_decay
 from agentao.protocol import CodingTask
-from agentao.repo_environment import SUPPORTED_REPOS
+from agentao.repo_environment import SUPPORTED_SWEBENCH_REPOS
 from agentao.utils.uids import check_uid_availability
 from agentao.validator.generate_problem import create_problem_statements
 from agentao.validator.graders.abstract_grader import MinerSubmission
@@ -255,7 +255,7 @@ class Validator(BaseValidatorNeuron):
         self.logger.info(f"Current step={self.step}...")
 
         current_dir = Path.cwd()
-        repo = random.choice(SUPPORTED_REPOS)
+        repo = random.choice(SUPPORTED_SWEBENCH_REPOS)
 
         author_name, repo_name = repo.split("/")
 
