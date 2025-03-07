@@ -142,10 +142,12 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.error(f"Failed to create Axon initialize with exception: {e}")
             pass
 
+    async def organic_forward(self):
+        raise NotImplementedError
+
     async def concurrent_forward(self):
-        coroutines = [
-            self.forward() for _ in range(self.config.neuron.num_concurrent_forwards)
-        ]
+        coroutines = [self.organic_forward()]
+        coroutines.extend([self.forward() for _ in range(self.config.neuron.num_concurrent_forwards)])
         await asyncio.gather(*coroutines)
 
     def run(self):
@@ -261,9 +263,8 @@ class BaseValidatorNeuron(BaseNeuron):
                 f"Scores contain NaN values. This may be due to a lack of responses from miners, or a bug in your reward functions."
             )
 
-        # TODO: Migrate to open PR scores
-        CLOSED_PR_PCT = 1.
-        OPEN_PR_PCT = 0.
+        CLOSED_PR_PCT = 0.97
+        OPEN_PR_PCT = 0.03
         # Calculate the average reward for each uid across non-zero values.
         # Replace any NaN values with 0.
         # Compute the norm of the scores
@@ -407,6 +408,8 @@ class BaseValidatorNeuron(BaseNeuron):
 
         if task_type == TaskType.LABELLED_ISSUE:
             self.scores = calculate_scores(self.scores)
+        elif task_type == TaskType.OPEN_ISSUE:
+            self.pr_scores = calculate_scores(self.pr_scores)
 
 
     def save_state(self):
