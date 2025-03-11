@@ -130,7 +130,7 @@ def _grade_miner_solution(miner_submission: MinerSubmission, logger: Logger) -> 
     miner_solution = miner_submission.solution
 
     OPENAI_CLIENT: Final[openai.Client] = openai.Client(api_key=os.getenv("OPENAI_API_KEY"))
-    cleaned_patch = preprocess_patch(repo, miner_solution.patch, logger)[0]
+    cleaned_patch = preprocess_patch(repo, miner_solution.patch, False, logger)[0]
 
     if cleaned_patch == "":
         hkey = miner_submission.miner_hotkey
@@ -164,7 +164,7 @@ def _grade_miner_solution(miner_submission: MinerSubmission, logger: Logger) -> 
     if miner_output_score is None:
         raise Exception("OpenAI did not grade miner output")
 
-    return (miner_output_score, cost)
+    return miner_output_score, cost
 
 
 class MockFloatGrader(FloatGrader):

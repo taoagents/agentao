@@ -433,7 +433,7 @@ class Validator(BaseValidatorNeuron):
             else:
                 uid = next(uid for uid, axon in zip(miner_uids, axons) if axon.hotkey == response.axon.hotkey)
                 # Need to watch out for injections
-                patch, test_outcomes_after = preprocess_patch(open_issue.repo, response.patch, self.logger)
+                patch, test_outcomes_after = preprocess_patch(open_issue.repo, response.patch, IS_RUNNING_OPEN_ISSUES, self.logger)
                 if patch != "":
                     working_miner_uids.append(uid)
                     finished_responses.append(IssueSolution(response.patch))
