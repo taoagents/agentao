@@ -392,6 +392,7 @@ class Validator(BaseValidatorNeuron):
         current_dir = Path.cwd()
         local_repo_dir = clone_repo(*open_issue.repo.split("/"), current_dir.parent, logger=self.logger)
 
+        self.logger.info("Running test outcomes before...")
         test_outcomes_before: Dict[str, bool] = run_tests(local_repo_dir, self.logger)
         self.logger.info(f"Test outcomes before: {test_outcomes_before}")
 

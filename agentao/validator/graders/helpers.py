@@ -108,10 +108,12 @@ def preprocess_patch(repo_path: str, patch: str, should_run_tests: bool, logger:
 
 def run_tests(repo_dir: Path, logger: Logger) -> Dict[str, bool]:
     # TODO: Use package environment to run tests
-    args = ["pytest", "--json-report", "-s", str(repo_dir)]
+    args = ["python3", "-m", "pytest", "--json-report", "-s", "."]
+
+    logger.info(f"Running command \`{' '.join(args)}\`")
     result = subprocess.run(
         args,
-        cwd=str(Path.cwd()),
+        cwd=str(repo_dir),
         capture_output=True,
         text=True,
     )
