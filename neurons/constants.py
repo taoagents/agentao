@@ -7,7 +7,7 @@ UPLOAD_ISSUE_ENDPOINT: Final[str] = "https://gh-issue-pull.onrender.com/upload_i
 OPEN_ISSUE_ENDPOINT: Final[str] = "https://gh-issue-pull.onrender.com/open_issue"
 DOCKER_CACHE_LEVEL: Final[str] = "instance"
 
-LOG_SESSION_CONTEXT: int = 23
+LOG_SESSION_CONTEXT: int = 24
 
 ## Validator eval constants
 LLM_EVAL_MULT: Final[float] = 9.0
