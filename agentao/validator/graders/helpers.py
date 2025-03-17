@@ -1,8 +1,8 @@
-import json
 import os
 import re
 import subprocess
 import tempfile
+import xml.etree.ElementTree as ET
 from logging import Logger
 from pathlib import Path
 from subprocess import CompletedProcess
@@ -106,9 +106,36 @@ def preprocess_patch(repo_path: str, patch: str, should_run_tests: bool, logger:
 
     return patch, test_outcomes_after
 
+
+def parse_junitxml(file_path: str) -> Dict:
+    tree = ET.parse(file_path)
+    root = tree.getroot()
+
+    results = {"tests": []}
+
+    for testcase in root.findall(".//testcase"):
+        name = testcase.get("classname") + "::" + testcase.get("name")
+        status = "passed"
+        error = None
+
+        failure = testcase.find("failure")
+        if failure is not None:
+            status = "failed"
+            error = failure.text.strip() if failure.text else "Unknown failure"
+
+        skipped = testcase.find("skipped")
+        if skipped is not None:
+            status = "skipped"
+
+        results["tests"].append({"name": name, "status": status, "error": error})
+
+    return results
+
+
 def run_tests(repo_dir: Path, logger: Logger) -> Dict[str, bool]:
     # TODO: Use package environment to run tests
-    args = ["python3", "-m", "pytest", "--json-report", "-s", "."]
+    results_file = "results.xml"
+    args = ["python3", "-m", "pytest", f"--junitxml={results_file}", "-s", "."]
 
     logger.info(f"Running command \`{' '.join(args)}\`")
     result = subprocess.run(
@@ -118,14 +145,13 @@ def run_tests(repo_dir: Path, logger: Logger) -> Dict[str, bool]:
         text=True,
     )
     logger.info(f"Output of `{' '.join(args)}`: {result}")
-    with open(".report.json", "r") as f:
-        report_data = json.load(f)
 
-    test_outcomes: Dict[str, bool] = {}
-    for test in report_data["tests"]:
-        did_test_pass = test["outcome"] == "passed"
+    report_data: Dict = parse_junitxml(str(repo_dir / results_file))
 
-        test_outcomes[test["keywords"][0]] = did_test_pass
+    test_outcomes: Dict[str, bool] = {
+        test["name"]: (test["status"] == "passed")
+        for test in report_data["tests"]
+    }
     return test_outcomes
 
 def remove_comments(patch_content: str) -> str:
